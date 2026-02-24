@@ -1,6 +1,6 @@
 {
   "name": "nextauthforge",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "Plug-and-play authentication scaffolding tool for Next.js App Router",
   "main": "dist/index.js",
   "bin": {
