@@ -1,10 +1,11 @@
 {
-  "name": "authforge",
+  "name": "nextauthforge",
   "version": "1.0.1",
   "description": "Plug-and-play authentication scaffolding tool for Next.js App Router",
   "main": "dist/index.js",
   "bin": {
-    "authforge": "bin/index.js"
+    "authforge": "bin/index.js",
+    "nextauthforge": "./bin/index.js"
   },
   "files": [
     "bin",
