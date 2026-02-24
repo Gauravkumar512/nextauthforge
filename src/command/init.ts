@@ -5,7 +5,7 @@ import { generateFiles } from "../generator";
 import { installDependencies } from "../installer";
 
 export async function runInit(): Promise<void> {
-  console.log(`\n${chalk.bold.hex("#e8ff47")("◆ AUTHFORGE")} ${chalk.white("— Next.js Auth Scaffolder")}\n`);
+  console.log(`\n${chalk.bold.hex("#e8ff47")("◆ NEXTAUTHFORGE")} ${chalk.white("— Next.js Auth Scaffolder")}\n`);
 
   // Step 1 — Ask questions
   const choices = await askQuestions();
@@ -37,7 +37,7 @@ export async function runInit(): Promise<void> {
 
   // Step 4 — Success summary
   console.log(`
-${chalk.bold.hex("#e8ff47")("✔ AuthForge setup complete!")}
+${chalk.bold.hex("#e8ff47")("✔ NEXTAuthForge setup complete!")}
 
 ${chalk.white.bold("Next steps:")}
 
