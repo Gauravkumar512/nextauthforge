@@ -1,0 +1,49 @@
+{
+  "name": "authforge",
+  "version": "1.0.0",
+  "description": "Plug-and-play authentication scaffolding tool for Next.js App Router",
+  "main": "dist/index.js",
+  "bin": {
+    "authforge": "./bin/index.js"
+  },
+  "files": [
+    "bin",
+    "dist",
+    "templates"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsx src/index.ts",
+    "start": "node bin/index.js"
+  },
+  "keywords": [
+    "nextjs",
+    "auth",
+    "authentication",
+    "scaffold",
+    "jwt",
+    "mongodb",
+    "cli"
+  ],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "dependencies": {
+    "bcryptjs": "^3.0.3",
+    "chalk": "^5.6.2",
+    "commander": "^14.0.3",
+    "fs-extra": "^11.3.3",
+    "inquirer": "^13.3.0",
+    "jose": "^6.1.3",
+    "mongoose": "^9.2.2",
+    "ora": "^9.3.0",
+    "react-hot-toast": "^2.6.0"
+  },
+  "devDependencies": {
+    "@types/bcryptjs": "^2.4.6",
+    "@types/fs-extra": "^11.0.4",
+    "@types/node": "^25.3.0",
+    "tsx": "^4.21.0",
+    "typescript": "^5.9.3"
+  }
+}
