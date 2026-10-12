@@ -1,8 +1,9 @@
 import mongoose from "mongoose";
+import { getEnv } from "@/src/lib/env";
 
 export async function connect(){
     
-    const MONGO_DB_URL = process.env.DB_CONFIG
+    const MONGO_DB_URL = getEnv().DATABASE_URL
 
     if(!MONGO_DB_URL){
         throw new Error("Please define the MONGODB_URI environment variable");

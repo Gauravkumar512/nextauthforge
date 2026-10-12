@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { jwtVerify } from "jose";
 import { COOKIE_NAME } from "./lib/auth-config";
+import { getEnv } from "./lib/env";
 
 const protectedRoutes = ["/dashboard"];
 const authRoutes = ["/login", "/signup"];
@@ -20,8 +21,8 @@ export async function proxy(request: NextRequest) {
       return NextResponse.redirect(new URL("/login", request.url));
     }
 
+    const secret = new TextEncoder().encode(getEnv().AUTH_SECRET);
     try {
-      const secret = new TextEncoder().encode(process.env.TOKEN_SECRET!);
       await jwtVerify(token, secret);
       return NextResponse.next();
     } catch {
@@ -30,8 +31,8 @@ export async function proxy(request: NextRequest) {
   }
 
   if (isAuthRoute && token) {
+    const secret = new TextEncoder().encode(getEnv().AUTH_SECRET);
     try {
-      const secret = new TextEncoder().encode(process.env.TOKEN_SECRET!);
       await jwtVerify(token, secret);
       return NextResponse.redirect(new URL("/dashboard", request.url));
     } catch {

@@ -1,6 +1,6 @@
 import { execSync } from "child_process";
 
-const DEPS = ["jose", "bcrypt", "mongoose", "react-hot-toast","axios"];
+const DEPS = ["jose", "bcrypt", "mongoose", "react-hot-toast", "axios", "zod"];
 const DEV_DEPS = ["@types/bcrypt"];
 
 export function installDependencies(targetDir: string): void {

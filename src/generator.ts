@@ -31,6 +31,7 @@ export async function generateFiles(
     { src: "lib/jwt.ts",                          dest: "src/lib/jwt.ts" },
     { src: "lib/session.ts",                      dest: "src/lib/session.ts" },
     { src: "lib/auth-config.ts",                  dest: "src/lib/auth-config.ts" },
+    { src: "lib/env.ts",                          dest: "src/lib/env.ts" },
     { src: "lib/hash.ts",                         dest: "src/lib/hash.ts" },
     { src: "lib/dbConfig.ts",                     dest: "src/lib/dbConfig.ts" },
     { src: "models/user.models.js",               dest: "src/models/user.models.js" },

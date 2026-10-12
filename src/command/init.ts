@@ -42,8 +42,8 @@ ${chalk.bold.hex("#e8ff47")("✔ NEXTAuthForge setup complete!")}
 ${chalk.white.bold("Next steps:")}
 
   ${chalk.dim("1.")} Add your environment variables to ${chalk.cyan(".env")}:
-     ${chalk.dim("MONGODB_URI=your_mongodb_connection_string")}
-     ${chalk.dim("TOKEN_SECRET=your_secret_key_min_32_chars")}
+     ${chalk.dim("DATABASE_URL=your_mongodb_connection_string")}
+     ${chalk.dim("AUTH_SECRET=your_secret_key_min_32_chars")}
 
   ${chalk.dim("2.")} Add ${chalk.cyan("<ToasterProvider />")} to your ${chalk.cyan("app/layout.tsx")}:
 

@@ -99,9 +99,12 @@ Cookie in browser → proxy.ts verifies on every protected route
 Create `.env.local` in your project root:
 
 ```env
-MONGODB_URI=mongodb+srv://<user>:<pass>@cluster.mongodb.net/dbname
-TOKEN_SECRET=your-secret-key-minimum-32-characters
+DATABASE_URL=mongodb+srv://<user>:<pass>@cluster.mongodb.net/dbname
+AUTH_SECRET=your-secret-key-minimum-32-characters
 ```
+
+Both are validated with `zod` (`src/lib/env.ts`); a missing or short `AUTH_SECRET` throws a clear error.
+Optionally set `COOKIE_NAME` to override the session cookie name (default `token`).
 
 ---
 

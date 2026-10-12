@@ -1,6 +1,7 @@
 import { SignJWT, jwtVerify, JWTPayload as JoseJWTPayload } from "jose";
+import { getEnv } from "@/src/lib/env";
 
-const getSecret = () => new TextEncoder().encode(process.env.TOKEN_SECRET!);
+const getSecret = () => new TextEncoder().encode(getEnv().AUTH_SECRET);
 
 export interface JWTPayload extends JoseJWTPayload {
   id: string;
