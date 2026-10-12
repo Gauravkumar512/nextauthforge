@@ -1,7 +1,8 @@
 import chalk from "chalk";
 import ora from "ora";
 import { askQuestions } from "../prompt";
-import { generateFiles } from "../generator";
+import { writeEnvFiles } from "../env-files";
+import { generateFiles, templateDirFor } from "../generator";
 import { installDependencies } from "../installer";
 import { patchLayout } from "../layout-patch";
 import { detectProject, DetectError } from "../detect";
@@ -32,6 +33,7 @@ export async function runInit(): Promise<void> {
     const ctx = { root: project.root, dryRun: false, yes: false, force: false };
     await generateFiles(ctx, project, choices);
     await patchLayout(ctx, project);
+    await writeEnvFiles(ctx, templateDirFor(choices.database));
     fileSpinner.succeed(chalk.green("Auth files scaffolded"));
   } catch (err: any) {
     fileSpinner.fail(chalk.red("Failed to scaffold files"));

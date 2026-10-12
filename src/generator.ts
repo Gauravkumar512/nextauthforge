@@ -57,6 +57,10 @@ function proxyFile(nextMajor: number): TemplateFile {
   };
 }
 
+export function templateDirFor(database: string): string {
+  return path.join(__dirname, "..", "templates", database);
+}
+
 export function planFiles(project: ProjectInfo, choices: UserChoices): TemplateFile[] {
   return [
     ...CORE_FILES.map((src) => ({ src })),
@@ -71,7 +75,7 @@ export async function generateFiles(
   project: ProjectInfo,
   choices: UserChoices
 ): Promise<FileResult[]> {
-  const templateDir = path.join(__dirname, "..", "templates", choices.database);
+  const templateDir = templateDirFor(choices.database);
   const results: FileResult[] = [];
 
   for (const file of planFiles(project, choices)) {
