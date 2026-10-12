@@ -3,9 +3,21 @@ import ora from "ora";
 import { askQuestions } from "../prompt";
 import { generateFiles } from "../generator";
 import { installDependencies } from "../installer";
+import { detectProject, DetectError } from "../detect";
 
 export async function runInit(): Promise<void> {
   console.log(`\n${chalk.bold.hex("#e8ff47")("◆ NEXTAUTHFORGE")} ${chalk.white("— Next.js Auth Scaffolder")}\n`);
+
+  let project;
+  try {
+    project = detectProject(process.cwd());
+  } catch (err) {
+    if (err instanceof DetectError) {
+      console.error(chalk.red(`✖ ${err.message}`));
+      process.exit(1);
+    }
+    throw err;
+  }
 
   // Step 1 — Ask questions
   const choices = await askQuestions();
@@ -16,7 +28,7 @@ export async function runInit(): Promise<void> {
   // Step 2 — Copy template files
   const fileSpinner = ora("Scaffolding auth files...").start();
   try {
-    await generateFiles(targetDir, choices);
+    await generateFiles(project, choices);
     fileSpinner.succeed(chalk.green("Auth files scaffolded"));
   } catch (err: any) {
     fileSpinner.fail(chalk.red("Failed to scaffold files"));
@@ -71,6 +83,5 @@ ${chalk.dim("Auth routes available:")}
   ${chalk.dim("POST")} ${chalk.cyan("/api/auth/login")}
   ${chalk.dim("POST")} ${chalk.cyan("/api/auth/logout")}
   ${chalk.dim("GET")}  ${chalk.cyan("/api/auth/me")}
-  ${chalk.yellow("⚠ Your app/ was moved to src/app/")}
 `);
 }

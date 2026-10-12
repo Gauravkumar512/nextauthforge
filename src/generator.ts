@@ -1,73 +1,95 @@
 import path from "path";
 import fs from "fs-extra";
 import { UserChoices } from "./prompt";
+import { ProjectInfo } from "./detect";
 
-async function ensureSrcStructure(targetDir: string): Promise<void> {
-  const srcDir = path.join(targetDir, "src");
-  const rootAppDir = path.join(targetDir, "app");
+interface TemplateFile {
+  /** Path relative to the template directory. */
+  src: string;
+  /** Replaces the default destination file name (e.g. proxy.ts -> middleware.ts). */
+  destName?: string;
+  transform?: (content: string) => string;
+}
 
-  // If no src/ exists but app/ does — move app/ into src/
-  if (!(await fs.pathExists(srcDir)) && await fs.pathExists(rootAppDir)) {
-    await fs.ensureDir(srcDir);
-    await fs.move(rootAppDir, path.join(srcDir, "app"));
-    console.log("  ✓ Moved app/ into src/");
-  }
+/**
+ * The single template -> destination mapping. Everything lives under the
+ * layout's base dir ("src" or ""), except .env.example which is project-root.
+ */
+export function destPath(baseDir: string, templatePath: string): string {
+  if (templatePath === ".env.example") return templatePath;
+  return path.posix.join(baseDir, templatePath);
+}
+
+const CORE_FILES: string[] = [
+  "app/api/auth/login/route.ts",
+  "app/api/auth/signup/route.ts",
+  "app/api/auth/logout/route.ts",
+  "app/api/auth/me/route.ts",
+  "lib/jwt.ts",
+  "lib/session.ts",
+  "lib/auth-config.ts",
+  "lib/env.ts",
+  "lib/hash.ts",
+  "lib/dbConfig.ts",
+  "models/user.models.js",
+  ".env.example",
+  "hooks/useAuth.tsx",
+  "components/ToasterProvider.tsx",
+];
+
+const UI_FILES = [
+  "app/(auth)/login/page.tsx",
+  "app/(auth)/signup/page.tsx",
+  "app/page.tsx",
+];
+
+const DASHBOARD_FILES = ["app/dashboard/page.tsx"];
+
+/**
+ * Next >= 16 uses proxy.ts / `proxy`; older versions use middleware.ts /
+ * `middleware`. One template, name substituted at generation time.
+ */
+function proxyFile(nextMajor: number): TemplateFile {
+  if (nextMajor >= 16) return { src: "proxy.ts" };
+  return {
+    src: "proxy.ts",
+    destName: "middleware.ts",
+    transform: (content) => content.replace(/\bfunction proxy\b/, "function middleware"),
+  };
+}
+
+export function planFiles(project: ProjectInfo, choices: UserChoices): TemplateFile[] {
+  return [
+    ...CORE_FILES.map((src) => ({ src })),
+    proxyFile(project.nextMajor),
+    ...(choices.includeUI ? UI_FILES : []).map((src) => ({ src })),
+    ...(choices.includeDashboard ? DASHBOARD_FILES : []).map((src) => ({ src })),
+  ];
 }
 
 export async function generateFiles(
-  targetDir: string,
+  project: ProjectInfo,
   choices: UserChoices
 ): Promise<void> {
   const templateDir = path.join(__dirname, "..", "templates", choices.database);
 
-  // Move root app/ into src/ if needed — keeps all imports consistent
-  await ensureSrcStructure(targetDir);
-
-  const CORE_FILES = [
-    { src: "app/api/auth/login/route.ts",        dest: "src/app/api/auth/login/route.ts" },
-    { src: "app/api/auth/signup/route.ts",        dest: "src/app/api/auth/signup/route.ts" },
-    { src: "app/api/auth/logout/route.ts",        dest: "src/app/api/auth/logout/route.ts" },
-    { src: "app/api/auth/me/route.ts",            dest: "src/app/api/auth/me/route.ts" },
-    { src: "lib/jwt.ts",                          dest: "src/lib/jwt.ts" },
-    { src: "lib/session.ts",                      dest: "src/lib/session.ts" },
-    { src: "lib/auth-config.ts",                  dest: "src/lib/auth-config.ts" },
-    { src: "lib/env.ts",                          dest: "src/lib/env.ts" },
-    { src: "lib/hash.ts",                         dest: "src/lib/hash.ts" },
-    { src: "lib/dbConfig.ts",                     dest: "src/lib/dbConfig.ts" },
-    { src: "models/user.models.js",               dest: "src/models/user.models.js" },
-    { src: "proxy.ts",                            dest: "src/proxy.ts" },
-    { src: ".env.example",                        dest: ".env.example" },
-    { src: "hooks/useAuth.tsx",                    dest: "src/hooks/useAuth.tsx" },
-    { src: "components/ToasterProvider.tsx",      dest: "src/components/ToasterProvider.tsx" },
-  ];
-
-  const UI_FILES = [
-    { src: "app/(auth)/login/page.tsx",           dest: "src/app/(auth)/login/page.tsx" },
-    { src: "app/(auth)/signup/page.tsx",          dest: "src/app/(auth)/signup/page.tsx" },
-    { src: "app/page.tsx",                        dest: "src/app/page.tsx", overwrite: true },
-  ];
-
-  const DASHBOARD_FILES = [
-    { src: "app/dashboard/page.tsx",              dest: "src/app/dashboard/page.tsx" },
-  ];
-
-  const filesToCopy = [
-    ...CORE_FILES,
-    ...(choices.includeUI ? UI_FILES : []),
-    ...(choices.includeDashboard ? DASHBOARD_FILES : []),
-  ];
-
-  for (const file of filesToCopy) {
+  for (const file of planFiles(project, choices)) {
     const srcPath = path.join(templateDir, file.src);
-    const destPath = path.join(targetDir, file.dest);
+    const rel = destPath(project.baseDir, file.destName
+      ? path.posix.join(path.posix.dirname(file.src), file.destName)
+      : file.src);
+    const destFile = path.join(project.root, rel);
 
     if (!(await fs.pathExists(srcPath))) {
       console.warn(`⚠ Template file not found, skipping: ${file.src}`);
       continue;
     }
 
-    await fs.ensureDir(path.dirname(destPath));
-    const shouldOverwrite = (file as any).overwrite === true;
-    await fs.copy(srcPath, destPath, { overwrite: shouldOverwrite });
+    let content = await fs.readFile(srcPath, "utf8");
+    if (file.transform) content = file.transform(content);
+
+    await fs.ensureDir(path.dirname(destFile));
+    if (await fs.pathExists(destFile)) continue;
+    await fs.writeFile(destFile, content);
   }
 }
