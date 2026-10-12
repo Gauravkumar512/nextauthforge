@@ -2,6 +2,7 @@ import path from "path";
 import fs from "fs-extra";
 import { UserChoices } from "./prompt";
 import { ProjectInfo } from "./detect";
+import { FileContext, FileResult, writeManaged } from "./fileops";
 
 interface TemplateFile {
   /** Path relative to the template directory. */
@@ -12,11 +13,10 @@ interface TemplateFile {
 }
 
 /**
- * The single template -> destination mapping. Everything lives under the
- * layout's base dir ("src" or ""), except .env.example which is project-root.
+ * The single template -> destination mapping: everything lives under the
+ * layout's base dir ("src" or "").
  */
 export function destPath(baseDir: string, templatePath: string): string {
-  if (templatePath === ".env.example") return templatePath;
   return path.posix.join(baseDir, templatePath);
 }
 
@@ -32,7 +32,6 @@ const CORE_FILES: string[] = [
   "lib/hash.ts",
   "lib/dbConfig.ts",
   "models/user.models.js",
-  ".env.example",
   "hooks/useAuth.tsx",
   "components/ToasterProvider.tsx",
 ];
@@ -68,28 +67,45 @@ export function planFiles(project: ProjectInfo, choices: UserChoices): TemplateF
 }
 
 export async function generateFiles(
+  ctx: FileContext,
   project: ProjectInfo,
   choices: UserChoices
-): Promise<void> {
+): Promise<FileResult[]> {
   const templateDir = path.join(__dirname, "..", "templates", choices.database);
+  const results: FileResult[] = [];
 
   for (const file of planFiles(project, choices)) {
     const srcPath = path.join(templateDir, file.src);
-    const rel = destPath(project.baseDir, file.destName
-      ? path.posix.join(path.posix.dirname(file.src), file.destName)
-      : file.src);
-    const destFile = path.join(project.root, rel);
+    const rel = destPath(
+      project.baseDir,
+      file.destName
+        ? path.posix.join(path.posix.dirname(file.src), file.destName)
+        : file.src
+    );
 
     if (!(await fs.pathExists(srcPath))) {
-      console.warn(`⚠ Template file not found, skipping: ${file.src}`);
-      continue;
+      throw new Error(`Template file missing from the package: ${file.src}`);
+    }
+
+    // Next 16 refuses to start when both middleware.ts and proxy.ts exist.
+    if (project.nextMajor >= 16 && file.src === "proxy.ts") {
+      const legacy = ["middleware.ts", "middleware.js"].find((f) =>
+        fs.pathExistsSync(path.join(project.root, destPath(project.baseDir, f)))
+      );
+      if (legacy) {
+        results.push({
+          path: rel,
+          action: "skipped",
+          note: `${legacy} already exists and Next.js 16 can't use both; migrate it to proxy.ts or merge by hand`,
+        });
+        continue;
+      }
     }
 
     let content = await fs.readFile(srcPath, "utf8");
     if (file.transform) content = file.transform(content);
-
-    await fs.ensureDir(path.dirname(destFile));
-    if (await fs.pathExists(destFile)) continue;
-    await fs.writeFile(destFile, content);
+    results.push(await writeManaged(ctx, rel, content));
   }
+
+  return results;
 }

@@ -28,7 +28,11 @@ export async function runInit(): Promise<void> {
   // Step 2 — Copy template files
   const fileSpinner = ora("Scaffolding auth files...").start();
   try {
-    await generateFiles(project, choices);
+    await generateFiles(
+      { root: project.root, dryRun: false, yes: false, force: false },
+      project,
+      choices
+    );
     fileSpinner.succeed(chalk.green("Auth files scaffolded"));
   } catch (err: any) {
     fileSpinner.fail(chalk.red("Failed to scaffold files"));
