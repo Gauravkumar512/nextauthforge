@@ -41,7 +41,7 @@ ${chalk.bold.hex("#e8ff47")("✔ NEXTAuthForge setup complete!")}
 
 ${chalk.white.bold("Next steps:")}
 
-  ${chalk.dim("1.")} Add your environment variables to ${chalk.cyan(".env.local")}:
+  ${chalk.dim("1.")} Add your environment variables to ${chalk.cyan(".env")}:
      ${chalk.dim("MONGODB_URI=your_mongodb_connection_string")}
      ${chalk.dim("TOKEN_SECRET=your_secret_key_min_32_chars")}
 
