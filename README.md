@@ -2,7 +2,7 @@
 
 [![npm version](https://img.shields.io/npm/v/nextauthforge.svg)](https://www.npmjs.com/package/nextauthforge)
 [![npm downloads](https://img.shields.io/npm/dm/nextauthforge.svg)](https://www.npmjs.com/package/nextauthforge)
-[![license](https://img.shields.io/npm/l/nextauthforge.svg)](https://github.com/Gauravkumar512/authforge/blob/main/LICENSE)
+[![license](https://img.shields.io/npm/l/nextauthforge.svg)](https://github.com/Gauravkumar512/nextauthforge/blob/main/LICENSE)
 
 > Plug-and-play authentication scaffolding for Next.js App Router.  
 > Add production-ready auth to any Next.js project in under a minute.
@@ -186,7 +186,7 @@ Middleware protects these routes out of the box:
 
 ## Bug Reports & Feature Requests
 
-[Open an issue on GitHub](https://github.com/Gauravkumar512/authforge/issues)
+[Open an issue on GitHub](https://github.com/Gauravkumar512/nextauthforge/issues)
 
 ---
 

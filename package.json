@@ -1,6 +1,6 @@
 {
   "name": "nextauthforge",
-  "version": "1.0.3",
+  "version": "2.0.0-alpha.0",
   "description": "Plug-and-play authentication scaffolding tool for Next.js App Router",
   "main": "dist/index.js",
   "bin": {
@@ -26,8 +26,8 @@
     "mongodb",
     "cli"
   ],
-  "author": "",
-  "license": "ISC",
+  "author": "Gaurav Kumar <gauravskumar03@gmail.com> (https://github.com/Gauravkumar512)",
+  "license": "MIT",
   "type": "commonjs",
   "devDependencies": {
     "@types/fs-extra": "^11.0.4",
@@ -40,5 +40,16 @@
     "tsup": "^8.5.1",
     "tsx": "^4.21.0",
     "typescript": "^5.9.3"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Gauravkumar512/nextauthforge.git"
+  },
+  "bugs": {
+    "url": "https://github.com/Gauravkumar512/nextauthforge/issues"
+  },
+  "homepage": "https://github.com/Gauravkumar512/nextauthforge#readme",
+  "engines": {
+    "node": ">=18.18"
   }
 }
