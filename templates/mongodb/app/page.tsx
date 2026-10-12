@@ -72,7 +72,7 @@ export default function LandingPage() {
             mounted ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"
           }`}
         >
-          Replace this with your product's value proposition. Authentication is
+          Replace this with your product&apos;s value proposition. Authentication is
           already handled — focus on what makes your app unique.
         </p>
 

@@ -31,7 +31,7 @@ export default function SignupPage() {
     e.preventDefault();
 
     if (user.password !== user.confirmPassword) {
-      toast.error("Passwords don't match");
+      toast.error("Passwords don&apos;t match");
       return;
     }
 
@@ -40,8 +40,9 @@ export default function SignupPage() {
       await axios.post("/api/auth/signup", user);
       toast.success("Account created!");
       router.push("/dashboard");
-    } catch (error: any) {
-      toast.error(error?.response?.data?.error || "Something went wrong");
+    } catch (error) {
+      const message = axios.isAxiosError(error) ? error.response?.data?.error : undefined;
+      toast.error(message || "Something went wrong");
     } finally {
       setLoading(false);
     }
@@ -163,7 +164,7 @@ export default function SignupPage() {
                 {user.confirmPassword.length > 0 &&
                   user.password !== user.confirmPassword && (
                     <p className="text-xs text-red-400/70 mt-1.5">
-                      Passwords don't match
+                      Passwords don&apos;t match
                     </p>
                   )}
               </div>

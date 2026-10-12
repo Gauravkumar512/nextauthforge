@@ -38,7 +38,7 @@ export default function DashboardPage() {
       }
     };
     fetchUser();
-  }, []);
+  }, [router]);
 
   const handleLogout = async () => {
     await axios.post("/api/auth/logout");
@@ -164,7 +164,7 @@ export default function DashboardPage() {
             ◈ Developer Note
           </div>
           <p className="text-xs text-white/40 leading-relaxed">
-            This is your scaffolded dashboard. Replace the stats, cards, and content below with your application's actual data and features. The sidebar, auth logic, and user state are production-ready.
+            This is your scaffolded dashboard. Replace the stats, cards, and content below with your application&apos;s actual data and features. The sidebar, auth logic, and user state are production-ready.
           </p>
         </div>
       </div>

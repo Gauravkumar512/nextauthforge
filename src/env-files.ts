@@ -11,8 +11,8 @@ const GITIGNORE = ".gitignore";
 const ENV_IGNORE_RULES = new Set([".env*", ".env", ".env.*", ".env.local", ".env*.local"]);
 
 function hasKey(content: string, key: string, allowCommented = false): boolean {
-  const prefix = allowCommented ? "^\s*#?\s*" : "^\s*";
-  return new RegExp(`${prefix}(?:export\s+)?${key}\s*=`, "m").test(content);
+  const prefix = allowCommented ? String.raw`^\s*#?\s*` : String.raw`^\s*`;
+  return new RegExp(String.raw`${prefix}(?:export\s+)?${key}\s*=`, "m").test(content);
 }
 
 function appendBlock(existing: string, block: string): string {

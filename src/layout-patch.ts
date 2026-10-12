@@ -68,10 +68,8 @@ export function patchLayoutSource(source: string, importPath: string): PatchSour
     return { kind: "unrecognised", reason: "could not parse the opening <body> tag" };
   }
 
-  const restOfLine = source.slice(bodyEnd).split(/\r?\n/, 1)[0];
-  if (restOfLine.trim() !== "") {
-    return { kind: "unrecognised", reason: "content follows <body> on the same line" };
-  }
+  // One-line bodies (<body className="..">{children}</body>) get the component inline.
+  const sameLine = source.slice(bodyEnd).split(/\r?\n/, 1)[0].trim() !== "";
 
   const lineStart = source.lastIndexOf("\n", bodyStart) + 1;
   const bodyIndent = source.slice(lineStart, bodyStart).match(/^[ \t]*/)![0];
@@ -80,8 +78,8 @@ export function patchLayoutSource(source: string, importPath: string): PatchSour
   const importLine = `import { ToasterProvider } from ${quote}${importPath}${quote}${semi}`;
 
   // Apply the later edit first so earlier indexes stay valid.
-  let content =
-    source.slice(0, bodyEnd) + eol + indent + "<ToasterProvider />" + source.slice(bodyEnd);
+  const component = sameLine ? "<ToasterProvider />" : eol + indent + "<ToasterProvider />";
+  let content = source.slice(0, bodyEnd) + component + source.slice(bodyEnd);
   content = content.slice(0, importEnd) + eol + importLine + content.slice(importEnd);
   return { kind: "patched", content };
 }
@@ -110,7 +108,7 @@ export async function patchLayout(
   const importPath = toasterImportPath(layoutRel, project.baseDir);
 
   const manual = (reason: string): LayoutPatchOutcome => ({
-    result: { path: layoutRel, action: "skipped", note: `needs a manual edit (${reason})` },
+    result: { path: layoutRel, action: "skipped", note: `needs a manual edit: ${reason}` },
     manual: { path: layoutRel, reason, snippet: manualSnippet(importPath) },
   });
 

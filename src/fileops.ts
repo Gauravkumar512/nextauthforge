@@ -39,8 +39,8 @@ type Decision = "skip" | "overwrite" | "backup";
 
 async function decide(ctx: FileContext, rel: string): Promise<{ decision: Decision; note?: string }> {
   if (ctx.force) return { decision: "backup" };
-  if (ctx.yes) return { decision: "skip", note: "already exists (use --force to overwrite)" };
-  if (ctx.dryRun) return { decision: "skip", note: "already exists (would ask what to do)" };
+  if (ctx.yes) return { decision: "skip", note: "already exists, use --force to overwrite" };
+  if (ctx.dryRun) return { decision: "skip", note: "already exists, would ask what to do" };
 
   const { choice } = await inquirer.prompt([
     {
@@ -55,7 +55,7 @@ async function decide(ctx: FileContext, rel: string): Promise<{ decision: Decisi
       ],
     },
   ]);
-  return { decision: choice as Decision, note: choice === "skip" ? "already exists (kept)" : undefined };
+  return { decision: choice as Decision, note: choice === "skip" ? "already exists, kept" : undefined };
 }
 
 /** Writes a file, applying the conflict rules when it already exists. */

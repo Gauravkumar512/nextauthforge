@@ -21,8 +21,9 @@ export default function LoginPage() {
       await axios.post("/api/auth/login", user);
       toast.success("Welcome back!");
       router.replace("/dashboard");
-    } catch (error: any) {
-      toast.error(error?.response?.data?.error || "Something went wrong");
+    } catch (error) {
+      const message = axios.isAxiosError(error) ? error.response?.data?.error : undefined;
+      toast.error(message || "Something went wrong");
     } finally {
       setLoading(false);
     }
@@ -128,7 +129,7 @@ export default function LoginPage() {
 
           {/* Footer link */}
           <p className="mt-5 text-center text-xs text-white/20">
-            Don't have an account?{" "}
+            Don&apos;t have an account?{" "}
             <Link
               href="/signup"
               className="text-[#e8ff47]/50 hover:text-[#e8ff47] transition-colors"
