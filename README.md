@@ -113,7 +113,7 @@ Optionally set `COOKIE_NAME` to override the session cookie name (default `token
 Add `<ToasterProvider />` to your `src/app/layout.tsx`:
 
 ```tsx
-import ToasterProvider from "@/src/components/ToasterProvider"
+import { ToasterProvider } from "../components/ToasterProvider"
 
 export default function RootLayout({ children }) {
   return (

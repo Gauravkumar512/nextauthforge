@@ -47,7 +47,7 @@ ${chalk.white.bold("Next steps:")}
 
   ${chalk.dim("2.")} Add ${chalk.cyan("<ToasterProvider />")} to your ${chalk.cyan("app/layout.tsx")}:
 
-     ${chalk.dim("import ToasterProvider from '@/src/components/ToasterProvider'")}
+     ${chalk.dim("import { ToasterProvider } from '../components/ToasterProvider'")}
 
      ${chalk.dim("export default function RootLayout({ children }) {")}
      ${chalk.dim("  return (")}
