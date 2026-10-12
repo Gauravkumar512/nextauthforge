@@ -1,8 +1,8 @@
 import { NextResponse } from "next/server";
-import { User } from "@/src/models/user.models";
-import { connect } from "@/src/lib/dbConfig";
-import { verifyJWT } from "@/src/lib/jwt";
-import { getSessionCookie } from "@/src/lib/session";
+import { User } from "../../../../models/user.models";
+import { connect } from "../../../../lib/dbConfig";
+import { verifyJWT } from "../../../../lib/jwt";
+import { getSessionCookie } from "../../../../lib/session";
 
 export async function GET() {
   try {

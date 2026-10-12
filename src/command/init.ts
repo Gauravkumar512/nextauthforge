@@ -72,7 +72,5 @@ ${chalk.dim("Auth routes available:")}
   ${chalk.dim("POST")} ${chalk.cyan("/api/auth/logout")}
   ${chalk.dim("GET")}  ${chalk.cyan("/api/auth/me")}
   ${chalk.yellow("⚠ Your app/ was moved to src/app/")}
-  ${chalk.dim(`Make sure your tsconfig.json has:
-  "paths": { "@/*": ["./*"] }`)}
 `);
 }

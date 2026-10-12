@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
-import { User } from "@/src/models/user.models";
-import { connect } from "@/src/lib/dbConfig";
-import { hashedPassword } from "@/src/lib/hash";
-import { signJWT } from "@/src/lib/jwt";
-import { COOKIE_NAME } from "@/src/lib/auth-config";
+import { User } from "../../../../models/user.models";
+import { connect } from "../../../../lib/dbConfig";
+import { hashedPassword } from "../../../../lib/hash";
+import { signJWT } from "../../../../lib/jwt";
+import { COOKIE_NAME } from "../../../../lib/auth-config";
 
 export async function POST(request: NextRequest) {
   try {
