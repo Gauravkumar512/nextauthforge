@@ -3,6 +3,7 @@ import ora from "ora";
 import { askQuestions } from "../prompt";
 import { generateFiles } from "../generator";
 import { installDependencies } from "../installer";
+import { patchLayout } from "../layout-patch";
 import { detectProject, DetectError } from "../detect";
 
 export async function runInit(): Promise<void> {
@@ -28,11 +29,9 @@ export async function runInit(): Promise<void> {
   // Step 2 — Copy template files
   const fileSpinner = ora("Scaffolding auth files...").start();
   try {
-    await generateFiles(
-      { root: project.root, dryRun: false, yes: false, force: false },
-      project,
-      choices
-    );
+    const ctx = { root: project.root, dryRun: false, yes: false, force: false };
+    await generateFiles(ctx, project, choices);
+    await patchLayout(ctx, project);
     fileSpinner.succeed(chalk.green("Auth files scaffolded"));
   } catch (err: any) {
     fileSpinner.fail(chalk.red("Failed to scaffold files"));
