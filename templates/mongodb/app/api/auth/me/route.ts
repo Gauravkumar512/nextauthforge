@@ -39,7 +39,8 @@ export async function GET() {
       { success: true, user },
       { status: 200 }
     );
-  } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+  } catch (error) {
+    console.error("[auth] request failed:", error);
+    return NextResponse.json({ error: "Something went wrong" }, { status: 500 });
   }
 }
