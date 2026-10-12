@@ -1,3 +1,4 @@
+// TODO(Step 5): AuthProvider/useAuth is not mounted anywhere yet; wire it into the layout.
 'use client'
 import axios from "axios"
 import React, { createContext, useContext,useEffect } from "react"
