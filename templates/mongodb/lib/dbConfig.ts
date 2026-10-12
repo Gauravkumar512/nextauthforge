@@ -1,29 +1,40 @@
 import mongoose from "mongoose";
 import { getEnv } from "@/src/lib/env";
 
-export async function connect(){
-    
-    const MONGO_DB_URL = getEnv().DATABASE_URL
+interface MongooseCache {
+  conn: typeof mongoose | null;
+  promise: Promise<typeof mongoose> | null;
+}
 
-    if(!MONGO_DB_URL){
-        throw new Error("Please define the MONGODB_URI environment variable");
-    }
+// Cache on globalThis so hot reloads in dev don't open a new connection each time.
+const globalWithMongoose = globalThis as typeof globalThis & {
+  _mongooseCache?: MongooseCache;
+};
 
-    try {
-        await mongoose.connect(MONGO_DB_URL)
-        const connection = mongoose.connection
+const cache: MongooseCache = (globalWithMongoose._mongooseCache ??= {
+  conn: null,
+  promise: null,
+});
 
-        connection.on('connected', ()=>{
-            console.log("DB conencted")
-        })
+export async function connect(): Promise<typeof mongoose> {
+  if (cache.conn) return cache.conn;
 
-        connection.on('error',(err: any)=>{
-            console.log(err)
-        })
+  if (!cache.promise) {
+    cache.promise = mongoose
+      .connect(getEnv().DATABASE_URL, { bufferCommands: false })
+      .then((m) => {
+        console.log("DB connected");
+        return m;
+      });
+  }
 
-        
-    } catch (error) {
-        console.log("Something went wrong",error)
-        throw error
-    }
+  try {
+    cache.conn = await cache.promise;
+  } catch (error) {
+    // Allow the next request to retry instead of caching the failure.
+    cache.promise = null;
+    throw error;
+  }
+
+  return cache.conn;
 }
