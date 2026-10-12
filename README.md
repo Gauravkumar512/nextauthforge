@@ -134,7 +134,7 @@ export default function RootLayout({ children }) {
 - ✅ JWT in `httpOnly` cookie — immune to XSS
 - ✅ `secure` flag on in production
 - ✅ `sameSite: lax` CSRF protection
-- ✅ bcrypt password hashing (12 rounds)
+- ✅ bcryptjs password hashing (12 rounds)
 - ✅ Password never in JWT payload
 - ✅ Generic error messages — no email enumeration
 - ✅ `jose` library — Edge Runtime compatible
