@@ -41,13 +41,13 @@ ${chalk.bold.hex("#e8ff47")("✔ NEXTAuthForge setup complete!")}
 
 ${chalk.white.bold("Next steps:")}
 
-  ${chalk.dim("1.")} Add your environment variables to ${chalk.cyan(".env.local")}:
-     ${chalk.dim("MONGODB_URI=your_mongodb_connection_string")}
-     ${chalk.dim("TOKEN_SECRET=your_secret_key_min_32_chars")}
+  ${chalk.dim("1.")} Add your environment variables to ${chalk.cyan(".env")}:
+     ${chalk.dim("DATABASE_URL=your_mongodb_connection_string")}
+     ${chalk.dim("AUTH_SECRET=your_secret_key_min_32_chars")}
 
   ${chalk.dim("2.")} Add ${chalk.cyan("<ToasterProvider />")} to your ${chalk.cyan("app/layout.tsx")}:
 
-     ${chalk.dim("import ToasterProvider from '@/src/components/ToasterProvider'")}
+     ${chalk.dim("import { ToasterProvider } from '../components/ToasterProvider'")}
 
      ${chalk.dim("export default function RootLayout({ children }) {")}
      ${chalk.dim("  return (")}
@@ -72,7 +72,5 @@ ${chalk.dim("Auth routes available:")}
   ${chalk.dim("POST")} ${chalk.cyan("/api/auth/logout")}
   ${chalk.dim("GET")}  ${chalk.cyan("/api/auth/me")}
   ${chalk.yellow("⚠ Your app/ was moved to src/app/")}
-  ${chalk.dim(`Make sure your tsconfig.json has:
-  "paths": { "@/*": ["./*"] }`)}
 `);
 }

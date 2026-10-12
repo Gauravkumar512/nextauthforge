@@ -2,7 +2,7 @@
 
 [![npm version](https://img.shields.io/npm/v/nextauthforge.svg)](https://www.npmjs.com/package/nextauthforge)
 [![npm downloads](https://img.shields.io/npm/dm/nextauthforge.svg)](https://www.npmjs.com/package/nextauthforge)
-[![license](https://img.shields.io/npm/l/nextauthforge.svg)](https://github.com/Gauravkumar512/authforge/blob/main/LICENSE)
+[![license](https://img.shields.io/npm/l/nextauthforge.svg)](https://github.com/Gauravkumar512/nextauthforge/blob/main/LICENSE)
 
 > Plug-and-play authentication scaffolding for Next.js App Router.  
 > Add production-ready auth to any Next.js project in under a minute.
@@ -99,9 +99,12 @@ Cookie in browser → proxy.ts verifies on every protected route
 Create `.env.local` in your project root:
 
 ```env
-MONGODB_URI=mongodb+srv://<user>:<pass>@cluster.mongodb.net/dbname
-TOKEN_SECRET=your-secret-key-minimum-32-characters
+DATABASE_URL=mongodb+srv://<user>:<pass>@cluster.mongodb.net/dbname
+AUTH_SECRET=your-secret-key-minimum-32-characters
 ```
+
+Both are validated with `zod` (`src/lib/env.ts`); a missing or short `AUTH_SECRET` throws a clear error.
+Optionally set `COOKIE_NAME` to override the session cookie name (default `token`).
 
 ---
 
@@ -110,7 +113,7 @@ TOKEN_SECRET=your-secret-key-minimum-32-characters
 Add `<ToasterProvider />` to your `src/app/layout.tsx`:
 
 ```tsx
-import ToasterProvider from "@/src/components/ToasterProvider"
+import { ToasterProvider } from "../components/ToasterProvider"
 
 export default function RootLayout({ children }) {
   return (
@@ -131,7 +134,7 @@ export default function RootLayout({ children }) {
 - ✅ JWT in `httpOnly` cookie — immune to XSS
 - ✅ `secure` flag on in production
 - ✅ `sameSite: lax` CSRF protection
-- ✅ bcrypt password hashing (12 rounds)
+- ✅ bcryptjs password hashing (12 rounds)
 - ✅ Password never in JWT payload
 - ✅ Generic error messages — no email enumeration
 - ✅ `jose` library — Edge Runtime compatible
@@ -186,7 +189,7 @@ Middleware protects these routes out of the box:
 
 ## Bug Reports & Feature Requests
 
-[Open an issue on GitHub](https://github.com/Gauravkumar512/authforge/issues)
+[Open an issue on GitHub](https://github.com/Gauravkumar512/nextauthforge/issues)
 
 ---
 

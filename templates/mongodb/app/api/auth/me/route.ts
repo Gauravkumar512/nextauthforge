@@ -1,8 +1,8 @@
 import { NextResponse } from "next/server";
-import { User } from "@/src/models/user.models";
-import { connect } from "@/src/lib/dbConfig";
-import { verifyJWT } from "@/src/lib/jwt";
-import { getSessionCookie } from "@/src/lib/session";
+import { User } from "../../../../models/user.models";
+import { connect } from "../../../../lib/dbConfig";
+import { verifyJWT } from "../../../../lib/jwt";
+import { getSessionCookie } from "../../../../lib/session";
 
 export async function GET() {
   try {
@@ -39,7 +39,8 @@ export async function GET() {
       { success: true, user },
       { status: 200 }
     );
-  } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+  } catch (error) {
+    console.error("[auth] request failed:", error);
+    return NextResponse.json({ error: "Something went wrong" }, { status: 500 });
   }
 }

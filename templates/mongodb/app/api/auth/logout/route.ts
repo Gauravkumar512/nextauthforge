@@ -1,4 +1,5 @@
 import { NextResponse,NextRequest } from "next/server";
+import { COOKIE_NAME } from "../../../../lib/auth-config";
 
 export async function POST(request: NextRequest){
     try {
@@ -10,7 +11,7 @@ export async function POST(request: NextRequest){
         status: 200
     })
         
-    response.cookies.set("token", "", {
+    response.cookies.set(COOKIE_NAME, "", {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
       sameSite: "lax",
@@ -20,7 +21,8 @@ export async function POST(request: NextRequest){
 
     return response
         
-    } catch (error: any) {
-        return NextResponse.json({error: error.message},{status: 500})
+    } catch (error) {
+        console.error("[auth] request failed:", error);
+        return NextResponse.json({error: "Something went wrong"},{status: 500})
     }
 }

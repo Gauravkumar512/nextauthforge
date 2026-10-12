@@ -2,11 +2,12 @@
 
 import { program } from "commander";
 import { runInit } from "./command/init";
+import pkg from "../package.json";
 
 program
-  .name("authforge")
+  .name("nextauthforge")
   .description("Plug-and-play authentication scaffolding for Next.js App Router")
-  .version("1.0.0");
+  .version(pkg.version);
 
 program
   .command("init")

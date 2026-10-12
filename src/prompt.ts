@@ -1,6 +1,7 @@
 import inquirer from "inquirer";
 
 export interface UserChoices {
+  // Collected but not used yet; will be used for branding in Step 5.
   projectName: string;
   database: string;
   includeUI: boolean;
@@ -21,6 +22,7 @@ export async function askQuestions(): Promise<UserChoices> {
       type: "list",
       name: "database",
       message: "Which database are you using?",
+      choices: [{ name: "MongoDB", value: "mongodb" }],
       default: "mongodb",
     },
     {
@@ -32,7 +34,7 @@ export async function askQuestions(): Promise<UserChoices> {
     {
       type: "confirm",
       name: "includeDashboard",
-      message: "Include example dashboard & profile pages?",
+      message: "Include example dashboard",
       default: true,
     },
   ]);
