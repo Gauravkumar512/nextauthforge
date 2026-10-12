@@ -1,76 +1,135 @@
+import path from "path";
 import chalk from "chalk";
 import ora from "ora";
-import { askQuestions } from "../prompt";
-import { generateFiles } from "../generator";
-import { installDependencies } from "../installer";
+import inquirer from "inquirer";
+import fs from "fs-extra";
+import { resolveChoices, UserChoices } from "../prompt";
+import { generateFiles, templateDirFor } from "../generator";
+import { installDependencies, missingDependencies } from "../installer";
+import { installCommand } from "../pm";
+import { detectProject, DetectError, ProjectInfo } from "../detect";
+import { patchLayout, ManualStep } from "../layout-patch";
+import { writeEnvFiles } from "../env-files";
+import { FileContext, FileResult } from "../fileops";
+import { InstallOutcome, printSummary } from "../summary";
 
-export async function runInit(): Promise<void> {
+export interface InitOptions {
+  yes?: boolean;
+  force?: boolean;
+  dryRun?: boolean;
+  /** `--no-install` sets this to false. */
+  install?: boolean;
+  name?: string;
+  db?: string;
+  ui?: boolean;
+  dashboard?: boolean;
+}
+
+function fail(message: string): never {
+  console.error(chalk.red(`✖ ${message}`));
+  process.exit(1);
+}
+
+function describe(project: ProjectInfo): string {
+  return [
+    `Next.js ${project.nextVersion}`,
+    project.layout === "src" ? "src/ layout" : "root app/ layout",
+    project.tailwind ? "Tailwind" : "no Tailwind",
+    project.packageManager,
+  ].join(" · ");
+}
+
+export async function runInit(options: InitOptions): Promise<void> {
   console.log(`\n${chalk.bold.hex("#e8ff47")("◆ NEXTAUTHFORGE")} ${chalk.white("— Next.js Auth Scaffolder")}\n`);
 
-  // Step 1 — Ask questions
-  const choices = await askQuestions();
-  const targetDir = process.cwd();
+  const yes = options.yes === true;
+  const dryRun = options.dryRun === true;
 
+  let project: ProjectInfo;
+  try {
+    project = detectProject(process.cwd());
+  } catch (err) {
+    if (err instanceof DetectError) fail(err.message);
+    throw err;
+  }
+  console.log(chalk.dim(`Detected: ${describe(project)}`));
+  for (const w of project.warnings) console.log(chalk.yellow(`⚠ ${w}`));
   console.log("");
 
-  // Step 2 — Copy template files
-  const fileSpinner = ora("Scaffolding auth files...").start();
+  let defaultName = path.basename(project.root);
   try {
-    await generateFiles(targetDir, choices);
-    fileSpinner.succeed(chalk.green("Auth files scaffolded"));
+    defaultName = fs.readJsonSync(path.join(project.root, "package.json")).name ?? defaultName;
+  } catch {}
+
+  let choices: UserChoices;
+  try {
+    choices = await resolveChoices(
+      { name: options.name, db: options.db, ui: options.ui, dashboard: options.dashboard, yes },
+      defaultName
+    );
   } catch (err: any) {
-    fileSpinner.fail(chalk.red("Failed to scaffold files"));
-    console.error(err.message);
-    process.exit(1);
+    if (err?.name === "ExitPromptError") throw err;
+    fail(err.message);
   }
 
-  // Step 3 — Install dependencies
-  const installSpinner = ora("Installing dependencies...").start();
-  try {
-    installDependencies(targetDir);
-    installSpinner.succeed(chalk.green("Dependencies installed"));
-  } catch (err: any) {
-    installSpinner.fail(chalk.red("Failed to install dependencies"));
-    console.error(err.message);
-    process.exit(1);
+  if (!project.tailwind && (choices.includeUI || choices.includeDashboard)) {
+    console.log(
+      chalk.yellow(
+        "⚠ Tailwind CSS was not detected. The login, signup and dashboard templates are styled with Tailwind and will look unstyled without it."
+      )
+    );
+    if (!yes) {
+      const { proceed } = await inquirer.prompt([
+        { type: "confirm", name: "proceed", message: "Continue anyway?", default: true },
+      ]);
+      if (!proceed) fail("Cancelled. Nothing was changed.");
+    }
   }
 
-  // Step 4 — Success summary
-  console.log(`
-${chalk.bold.hex("#e8ff47")("✔ NEXTAuthForge setup complete!")}
+  const ctx: FileContext = {
+    root: project.root,
+    dryRun,
+    yes,
+    force: options.force === true,
+  };
 
-${chalk.white.bold("Next steps:")}
+  const results: FileResult[] = [];
+  let manual: ManualStep | undefined;
+  try {
+    results.push(...(await generateFiles(ctx, project, choices)));
+    const layout = await patchLayout(ctx, project);
+    results.push(layout.result);
+    manual = layout.manual;
+    results.push(...(await writeEnvFiles(ctx, templateDirFor(choices.database))));
+  } catch (err: any) {
+    if (err?.name === "ExitPromptError") throw err;
+    fail(`Failed to scaffold files: ${err.message}`);
+  }
 
-  ${chalk.dim("1.")} Add your environment variables to ${chalk.cyan(".env")}:
-     ${chalk.dim("DATABASE_URL=your_mongodb_connection_string")}
-     ${chalk.dim("AUTH_SECRET=your_secret_key_min_32_chars")}
+  const deps = missingDependencies(project.root);
+  let install: InstallOutcome;
+  if (deps.length === 0) {
+    install = { kind: "already" };
+  } else {
+    const command = installCommand(project.packageManager, deps);
+    if (dryRun) {
+      install = { kind: "dry-run", command };
+    } else if (options.install === false) {
+      install = { kind: "skipped", command };
+    } else {
+      const spinner = ora(`Installing dependencies (${command})...`).start();
+      try {
+        installDependencies(project.root, project.packageManager, deps);
+        spinner.succeed(chalk.green("Dependencies installed"));
+        install = { kind: "installed", command };
+      } catch (err: any) {
+        spinner.fail(chalk.red("Failed to install dependencies"));
+        console.error(err.message);
+        console.error(chalk.dim(`Files were scaffolded. Install manually with: ${command}`));
+        process.exit(1);
+      }
+    }
+  }
 
-  ${chalk.dim("2.")} Add ${chalk.cyan("<ToasterProvider />")} to your ${chalk.cyan("app/layout.tsx")}:
-
-     ${chalk.dim("import { ToasterProvider } from '../components/ToasterProvider'")}
-
-     ${chalk.dim("export default function RootLayout({ children }) {")}
-     ${chalk.dim("  return (")}
-     ${chalk.dim("    <html>")}
-     ${chalk.dim("      <body>")}
-     ${chalk.dim("        <ToasterProvider />")}
-     ${chalk.dim("        {children}")}
-     ${chalk.dim("      </body>")}
-     ${chalk.dim("    </html>")}
-     ${chalk.dim("  )")}
-     ${chalk.dim("}")}
-
-  ${chalk.dim("3.")} Run your dev server:
-     ${chalk.cyan("npm run dev")}
-
-  ${chalk.dim("4.")} Visit ${chalk.cyan("http://localhost:3000")} to see your app
-
-${chalk.dim("────────────────────────────────────────────────────")}
-${chalk.dim("Auth routes available:")}
-  ${chalk.dim("POST")} ${chalk.cyan("/api/auth/signup")}
-  ${chalk.dim("POST")} ${chalk.cyan("/api/auth/login")}
-  ${chalk.dim("POST")} ${chalk.cyan("/api/auth/logout")}
-  ${chalk.dim("GET")}  ${chalk.cyan("/api/auth/me")}
-  ${chalk.yellow("⚠ Your app/ was moved to src/app/")}
-`);
+  printSummary({ project, results, manual, install, dryRun });
 }

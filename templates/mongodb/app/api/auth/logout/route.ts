@@ -1,7 +1,7 @@
-import { NextResponse,NextRequest } from "next/server";
+import { NextResponse } from "next/server";
 import { COOKIE_NAME } from "../../../../lib/auth-config";
 
-export async function POST(request: NextRequest){
+export async function POST(){
     try {
         const response = NextResponse.json({
             message: 'Logout successfully',

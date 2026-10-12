@@ -15,23 +15,46 @@
 npx nextauthforge init
 ```
 
-No global install needed. Just run and follow the prompts.
+No global install needed. Run it from the root of an existing Next.js project (App Router, TypeScript, Next.js 13+) and follow the prompts.
+
+It detects your setup first: the Next.js version, whether you use `src/app/` or a root `app/`, TypeScript, Tailwind and your package manager (pnpm, yarn, bun or npm, from your lockfile). Files are written into the layout you already have; your `app/` is never moved.
+
+### Flags
+
+| Flag | Description |
+|------|-------------|
+| `-y, --yes` | Skip every prompt and use defaults |
+| `--force` | Overwrite existing files (a `.bak` backup is written first) |
+| `--dry-run` | Print what would be created / patched / skipped; change nothing |
+| `--no-install` | Don't install dependencies |
+| `--name <name>` | Project name |
+| `--db <mongodb>` | Database |
+| `--ui` / `--no-ui` | Include / skip login & signup pages (and the landing page) |
+| `--dashboard` / `--no-dashboard` | Include / skip the example dashboard |
+
+Existing files are never silently skipped or overwritten. Interactively you are asked per file (skip / overwrite / overwrite with a `.bak` backup). With `--yes` they are skipped unless you pass `--force`.
 
 ---
 
 ## Demo
 
 ```
-◆ AUTHFORGE — Next.js Auth Scaffolder
+◆ NEXTAUTHFORGE — Next.js Auth Scaffolder
+
+Detected: Next.js 16.1.0 · src/ layout · Tailwind · npm
 
 ? What is your project name? my-app
 ? Which database are you using? MongoDB
 ? Include login & signup pages? Yes
-? Include example dashboard & profile pages? Yes
+? Include example dashboard? Yes
 
-✓ Auth files scaffolded
-✓ Dependencies installed
-✓ AuthForge setup complete!
+✔ NEXTAUTHFORGE setup complete!
+
+Files:
+  created         src/app/api/auth/login/route.ts
+  patched         src/app/layout.tsx  (backup: src/app/layout.tsx.bak)
+  skipped         src/app/page.tsx  (already exists (kept))
+  ...
 ```
 
 ---
@@ -40,7 +63,7 @@ No global install needed. Just run and follow the prompts.
 
 ```
 your-project/
- ├─ src/
+ ├─ src/            ← or the project root, if you use a root app/
  │   ├─ app/
  │   │   ├─ (auth)/
  │   │   │   ├─ login/page.tsx         ← Login UI
@@ -59,8 +82,10 @@ your-project/
  │   │   ├─ hash.ts
  │   │   ├─ jwt.ts
  │   │   └─ session.ts
- │   └─ models/user.models.js
- └─ proxy.ts                           ← Route protection middleware
+ │   ├─ models/user.models.js
+ │   └─ proxy.ts                       ← Route protection (middleware.ts on Next < 16)
+ ├─ .env.local                         ← DATABASE_URL + generated AUTH_SECRET
+ └─ .env.example
 ```
 
 ---
@@ -78,7 +103,7 @@ Route Handler
 MongoDB
   │
   ▼
-Cookie in browser → proxy.ts verifies on every protected route
+Cookie in browser → proxy.ts (middleware.ts on Next < 16) verifies on every protected route
 ```
 
 ---
@@ -96,36 +121,32 @@ Cookie in browser → proxy.ts verifies on every protected route
 
 ## Environment Variables
 
-Create `.env.local` in your project root:
+`init` creates `.env.local` for you with a freshly generated `AUTH_SECRET` and an empty `DATABASE_URL` (existing env files are never overwritten; only missing keys are appended). Fill in `DATABASE_URL`:
 
 ```env
 DATABASE_URL=mongodb+srv://<user>:<pass>@cluster.mongodb.net/dbname
-AUTH_SECRET=your-secret-key-minimum-32-characters
+AUTH_SECRET=generated-for-you-minimum-32-characters
 ```
+
+`.env*` (except `.env.example`) is added to your `.gitignore` if it isn't ignored already.
 
 Both are validated with `zod` (`src/lib/env.ts`); a missing or short `AUTH_SECRET` throws a clear error.
 Optionally set `COOKIE_NAME` to override the session cookie name (default `token`).
 
 ---
 
-## After Init — One Manual Step
+## The Toaster
 
-Add `<ToasterProvider />` to your `src/app/layout.tsx`:
+`init` mounts `<ToasterProvider />` inside `<body>` of your root layout automatically (writing `layout.tsx.bak` first, and doing nothing if it is already there). If your layout has an unusual shape it is left untouched and the exact snippet to add is printed:
 
 ```tsx
 import { ToasterProvider } from "../components/ToasterProvider"
 
-export default function RootLayout({ children }) {
-  return (
-    <html>
-      <body>
-        <ToasterProvider />
-        {children}
-      </body>
-    </html>
-  )
-}
+// inside <body>:
+<ToasterProvider />
 ```
+
+The import path is relative to your layout (`../components/...` for both `src/app/layout.tsx` and `app/layout.tsx`).
 
 ---
 
@@ -181,8 +202,8 @@ Middleware protects these routes out of the box:
 
 ## Requirements
 
-- Next.js 14+ (App Router)
-- Node.js 18+
+- Next.js 13+ (App Router) with TypeScript (Tailwind recommended for the UI templates)
+- Node.js 18.18+
 - MongoDB database (local or Atlas)
 
 ---

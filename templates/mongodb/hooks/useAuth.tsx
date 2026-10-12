@@ -3,18 +3,31 @@
 import axios from "axios"
 import React, { createContext, useContext,useEffect } from "react"
 
-const AuthContext = createContext<any>(null)
+interface AuthUser {
+    _id: string
+    username: string
+    email: string
+}
+
+interface AuthContextValue {
+    user: AuthUser | null
+    Setuser: React.Dispatch<React.SetStateAction<AuthUser | null>>
+    fetchUser: () => Promise<void>
+    loading: boolean
+}
+
+const AuthContext = createContext<AuthContextValue | null>(null)
 
 export const AuthProvider = ({children}: {children: React.ReactNode})=>{
 
-    const [user,Setuser] = React.useState(null)
+    const [user,Setuser] = React.useState<AuthUser | null>(null)
     const [loading,Setloading] = React.useState(true)
 
     const fetchUser = async ()=>{
         try {
             const response = await axios.get('/api/auth/me')
             Setuser(response.data.user)
-        } catch (error) {
+        } catch {
             Setuser(null)
         } finally {
             Setloading(false)
