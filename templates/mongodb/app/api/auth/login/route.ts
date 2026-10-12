@@ -3,6 +3,7 @@ import { User } from "@/src/models/user.models";
 import { connect } from "@/src/lib/dbConfig";
 import { comparePassword } from "@/src/lib/hash";
 import { signJWT } from "@/src/lib/jwt";
+import { COOKIE_NAME } from "@/src/lib/auth-config";
 
 export async function POST(request: NextRequest) {
   try {
@@ -42,7 +43,7 @@ export async function POST(request: NextRequest) {
       { status: 200 }
     );
 
-    response.cookies.set("token", token, {
+    response.cookies.set(COOKIE_NAME, token, {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
       sameSite: "lax",
