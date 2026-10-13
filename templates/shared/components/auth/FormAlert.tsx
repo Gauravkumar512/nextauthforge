@@ -43,7 +43,7 @@ export function FormAlert({
       )}
     >
       <Icon className={cx("mt-0.5 h-5 w-5 shrink-0", icon)} />
-      <div className="min-w-0 leading-relaxed">
+      <div className="min-w-0 break-words leading-relaxed">
         {title ? <p className="font-bold">{title}</p> : null}
         {children ? <div className={title ? "mt-1" : undefined}>{children}</div> : null}
       </div>
