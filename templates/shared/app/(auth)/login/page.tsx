@@ -6,15 +6,7 @@ import { useRouter } from "next/navigation";
 import React, { useState } from "react";
 import toast from "react-hot-toast";
 import { safeNext } from "../../../lib/safe-redirect";
-
-function errorMessage(error: unknown): string {
-  if (axios.isAxiosError(error)) {
-    const data = error.response?.data;
-    const firstField = data?.fields ? Object.values(data.fields)[0] : undefined;
-    return (typeof firstField === "string" ? firstField : data?.error) || "Something went wrong";
-  }
-  return "Something went wrong";
-}
+import { errorCode, errorMessage } from "../_components/api";
 
 function nextPath(): string {
   return safeNext(new URLSearchParams(window.location.search).get("next"));
@@ -36,6 +28,11 @@ export default function LoginPage() {
       toast.success("Welcome back!");
       router.replace(nextPath());
     } catch (error) {
+      if (errorCode(error) === "EMAIL_NOT_VERIFIED") {
+        toast.error(errorMessage(error));
+        router.push(`/verify-email?email=${encodeURIComponent(user.email)}`);
+        return;
+      }
       toast.error(errorMessage(error));
     } finally {
       setLoading(false);
@@ -116,6 +113,15 @@ export default function LoginPage() {
                   placeholder="••••••••"
                   className="w-full bg-white/5 border border-white/10 rounded px-4 py-3 text-sm text-white placeholder-white/20 outline-none focus:border-[#e8ff47]/50 focus:bg-white/[0.07] transition-all"
                 />
+              </div>
+
+              <div className="text-right -mt-2">
+                <Link
+                  href="/forgot-password"
+                  className="text-xs text-[#e8ff47]/50 hover:text-[#e8ff47] transition-colors"
+                >
+                  Forgot password?
+                </Link>
               </div>
 
               {/* Submit */}
