@@ -1,24 +1,32 @@
-import { SignJWT, jwtVerify, JWTPayload as JoseJWTPayload } from "jose";
-import { getEnv } from "./env";
+import { SignJWT, jwtVerify } from "jose";
+import { authConfig } from "./auth-config";
+import { getAuthSecret } from "./env";
 
-const getSecret = () => new TextEncoder().encode(getEnv().AUTH_SECRET);
+// Edge-safe: only `jose`, no Node-only imports (the proxy uses this file).
 
-export interface JWTPayload extends JoseJWTPayload {
-  id: string;
-  email: string;
-}
+const getKey = () => new TextEncoder().encode(getAuthSecret());
 
-export async function signJWT(payload: JWTPayload): Promise<string> {
-  return await new SignJWT(payload)
+export async function signAccessToken(userId: string): Promise<string> {
+  return new SignJWT({})
     .setProtectedHeader({ alg: "HS256" })
-    .setExpirationTime("1d")
-    .sign(getSecret());
+    .setSubject(userId)
+    .setIssuer(authConfig.tokens.issuer)
+    .setAudience(authConfig.tokens.audience)
+    .setIssuedAt()
+    .setExpirationTime(`${authConfig.tokens.accessTtlSeconds}s`)
+    .sign(getKey());
 }
 
-export async function verifyJWT(token: string): Promise<JWTPayload | null> {
+/** Returns the user id if the token is valid and unexpired, otherwise null. */
+export async function verifyAccessToken(token: string): Promise<string | null> {
+  const key = getKey();
   try {
-    const { payload } = await jwtVerify(token, getSecret());
-    return payload as unknown as JWTPayload;
+    const { payload } = await jwtVerify(token, key, {
+      algorithms: ["HS256"],
+      issuer: authConfig.tokens.issuer,
+      audience: authConfig.tokens.audience,
+    });
+    return typeof payload.sub === "string" ? payload.sub : null;
   } catch {
     return null;
   }
