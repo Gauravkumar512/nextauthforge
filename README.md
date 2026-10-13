@@ -31,8 +31,9 @@ It detects your setup first: the Next.js version, whether you use `src/app/` or 
 | `--verify-email` / `--no-verify-email` | Require / don't require email verification before sign-in (default off with `--yes`) |
 | `--name <name>` | Project name (also the brand in emails) |
 | `--db <mongodb>` | Database |
-| `--ui` / `--no-ui` | Include / skip login & signup pages (and the landing page) |
-| `--dashboard` / `--no-dashboard` | Include / skip the example dashboard |
+| `--ui` / `--no-ui` | Include / skip the sign-in, sign-up, forgot/reset password and verify email pages, plus the error, not-found and placeholder Terms/Privacy pages |
+| `--landing` / `--no-landing` | Include / skip the landing page |
+| `--dashboard` / `--no-dashboard` | Include / skip the dashboard and settings pages |
 
 Existing files are never silently skipped or overwritten. Interactively you are asked per file (skip / overwrite / overwrite with a `.bak` backup). With `--yes` they are skipped unless you pass `--force`.
 
@@ -47,7 +48,8 @@ Detected: Next.js 16.1.0 · src/ layout · Tailwind · npm
 
 ? What is your project name? my-app
 ? Which database are you using? MongoDB
-? Include login & signup pages? Yes
+? Include the sign-in, sign-up and password pages (plus error and legal pages)? Yes
+? Include a landing page? Yes
 ? Include example dashboard? Yes
 
 ✔ NEXTAUTHFORGE setup complete!
@@ -67,18 +69,26 @@ Paths are relative to `src/` (or the project root if you use a root `app/`).
 
 ```
 app/
- ├─ (auth)/login, signup, forgot-password, reset-password, verify-email   ← minimal pages
- ├─ api/auth/
- │   ├─ signup, login, logout, logout-all, refresh, me
- │   ├─ forgot-password, reset-password
- │   ├─ verify-email, resend-verification
- │   └─ change-password, profile
- ├─ dashboard/page.tsx                       ← Example protected page
- └─ page.tsx                                 ← Landing page
-components/ToasterProvider.tsx
-hooks/useAuth.tsx
+ ├─ page.tsx                                 ← Landing page (copy lives in lib/site-config.ts)
+ ├─ (auth)/login, signup, forgot-password, reset-password, verify-email
+ ├─ dashboard/page.tsx, settings/page.tsx    ← Protected: overview, profile, password, sessions
+ ├─ not-found.tsx, error.tsx, terms/, privacy/   ← Terms/Privacy are placeholders to replace
+ └─ api/auth/
+     ├─ signup, login, logout, logout-all, refresh, me
+     ├─ forgot-password, reset-password
+     ├─ verify-email, resend-verification
+     └─ change-password, profile
+components/
+ ├─ auth/        ← shared UI kit (AuthShell, FormField, PasswordInput, ...)
+ ├─ landing/, dashboard/
+ └─ ToasterProvider.tsx
+hooks/useAuth.tsx       ← <AuthProvider> + useAuth()
+styles/authforge.css    ← design tokens (accent colour, radius, ...), scoped to `.af`
+types/auth.ts
 lib/
- ├─ auth-config.ts      ← cookie names, TTLs, protected routes, password policy, rate limits
+ ├─ api-client.ts       ← fetch wrapper with one silent token refresh
+ ├─ site-config.ts      ← landing page copy
+ ├─ auth-config.ts      ← app name, cookie names, TTLs, protected routes, password policy, rate limits
  ├─ auth/service.ts     ← register, login, refresh rotation, logout
  ├─ auth/account.ts     ← email verification, password reset/change, profile
  ├─ email/              ← sendEmail() + templates + the adapter you chose (smtp | resend | console)
@@ -93,6 +103,8 @@ proxy.ts                ← Route protection (middleware.ts on Next < 16)
 .env.local              ← generated AUTH_SECRET + the keys for your email provider
 .env.example
 ```
+
+The UI uses Tailwind (v3.4 or v4) utilities plus the CSS variables in `styles/authforge.css`: change `--af-accent` or `--af-radius` there to restyle everything. No UI or icon libraries are installed.
 
 Route handlers never touch the database directly: they call `lib/auth/service.ts`, which only uses the interfaces in `lib/db/types.ts`.
 
@@ -179,18 +191,20 @@ Forgot-password and resend-verification send their email after the response so t
 
 ---
 
-## The Toaster
+## Toaster and AuthProvider
 
-`init` mounts `<ToasterProvider />` inside `<body>` of your root layout automatically (writing `layout.tsx.bak` first, and doing nothing if it is already there). If your layout has an unusual shape it is left untouched and the exact snippet to add is printed:
+`init` patches your root layout (writing `layout.tsx.bak` first, and doing nothing for parts that are already there): it adds `<ToasterProvider />` inside `<body>` and wraps `{children}` in `<AuthProvider>`. If your layout has an unusual shape it is left untouched (or only partly patched) and the exact snippet to add is printed:
 
 ```tsx
 import { ToasterProvider } from "../components/ToasterProvider"
+import { AuthProvider } from "../hooks/useAuth"
 
 // inside <body>:
 <ToasterProvider />
+<AuthProvider>{children}</AuthProvider>
 ```
 
-The import path is relative to your layout (`../components/...` for both `src/app/layout.tsx` and `app/layout.tsx`).
+The import paths are relative to your layout (`../components/...` for both `src/app/layout.tsx` and `app/layout.tsx`). Use `useAuth()` in client components to get `{ user, loading, refresh, logout }`.
 
 ---
 
@@ -234,7 +248,6 @@ In Server Components use `getCurrentUser()` or `requireUser()` from `lib/auth/se
 | `bcryptjs` | Password hashing |
 | `mongoose` | MongoDB ODM (database template) |
 | `zod` | Input and env validation |
-| `axios` | HTTP requests |
 | `nodemailer` + `@types/nodemailer` | SMTP email (only with `--email smtp`) |
 | `react-hot-toast` | Notifications |
 

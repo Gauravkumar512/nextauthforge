@@ -14,7 +14,7 @@
     "jsx": "preserve",
     // The generator merges these folders into one project, so relative imports
     // (e.g. ../db from shared/ into mongodb/) resolve across them.
-    "rootDirs": ["shared", "mongodb", "email-console", "email-smtp", "email-resend", "next-after"]
+    "rootDirs": ["shared", "mongodb", "email-console", "email-smtp", "email-resend", "next-after", "cache-components"]
   },
-  "include": ["shared", "mongodb", "email-console", "email-smtp", "email-resend", "next-after"]
+  "include": ["shared", "mongodb", "email-console", "email-smtp", "email-resend", "next-after", "cache-components"]
 }

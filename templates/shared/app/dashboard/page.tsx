@@ -1,178 +1,96 @@
-"use client";
-
-import { useEffect, useState } from "react";
+import type { Metadata } from "next";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import axios from "axios";
+import { CheckIcon } from "../../components/auth/icons";
+import { FormAlert } from "../../components/auth/FormAlert";
+import { cardClass, cx, headingFont, linkClass, mutedText } from "../../components/auth/ui";
+import { VerifyBanner } from "../../components/dashboard/VerifyBanner";
+import { authConfig } from "../../lib/auth-config";
+import { requireUser } from "../../lib/auth/server";
 
-interface AuthUser {
-  id: string;
-  name: string;
-  email: string;
-  createdAt: string;
-}
+export const metadata: Metadata = { title: "Overview" };
 
-export default function DashboardPage() {
-  const [user, setUser] = useState<AuthUser | null>(null);
-  const [loading, setLoading] = useState(true);
-  const router = useRouter();
+const formatDate = (date: Date) =>
+  new Intl.DateTimeFormat("en-US", { dateStyle: "long", timeZone: "UTC" }).format(date);
 
-  useEffect(() => {
-    const fetchUser = async() => {
-      try {
-        let response = await fetch("/api/auth/me");
-        if (response.status === 401) {
-          // The access token may just have expired: renew it once and retry.
-          const refreshed = await fetch("/api/auth/refresh", { method: "POST" });
-          if (refreshed.ok) response = await fetch("/api/auth/me");
-        }
-        if (!response.ok) {
-          router.replace("/login");
-          return;
-        }
-        const data = await response.json();
-        if (data.success) {
-          setUser(data.user);
-        } else {
-          router.replace("/login");
-        }
-      } catch {
-        router.replace("/login");
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchUser();
-  }, [router]);
+// EDIT: this page is a starting point. Replace the cards and the checklist with
+// your own product's content.
+export default async function DashboardPage() {
+  const user = await requireUser({ verified: authConfig.requireEmailVerification });
+  const verified = user.emailVerifiedAt !== null;
+  const firstName = user.name.trim().split(/\s+/)[0] || user.name;
 
-  const handleLogout = async () => {
-    await axios.post("/api/auth/logout");
-    router.replace("/");
-  };
-
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-[#0a0a0a] flex items-center justify-center">
-        <div className="w-6 h-6 border-2 border-[#e8ff47] border-t-transparent rounded-full animate-spin" />
-      </div>
-    );
-  }
+  const checklist = [
+    { label: "Create your account", done: true },
+    { label: "Verify your email address", done: verified },
+  ];
 
   return (
-    <div className="min-h-screen bg-[#0a0a0a] text-white font-mono">
-      {/* Sidebar */}
-      <div className="fixed left-0 top-0 h-full w-56 border-r border-white/10 flex flex-col p-6 z-10">
-        {/* Logo */}
-        <div className="mb-10">
-          <span className="text-[#e8ff47] text-lg font-bold tracking-tight">
-            AUTH<span className="text-white">FORGE</span>
-          </span>
-        </div>
+    <div className="mx-auto max-w-4xl">
+      <h1 className={cx(headingFont, "text-3xl")}>Welcome, {firstName}</h1>
+      <p className={cx(mutedText, "mt-2 text-sm")}>Here is a quick look at your account.</p>
 
-        {/* Nav */}
-        <nav className="flex flex-col gap-1 flex-1">
-          {[
-            { label: "Dashboard", href: "/dashboard", active: true, icon: "▣" },
-          ].map((item) => (
-            <Link
-              key={item.href}
-              href={item.href}
-              className={`flex items-center gap-3 px-3 py-2.5 rounded text-sm transition-all ${
-                item.active
-                  ? "bg-[#e8ff47] text-black font-bold"
-                  : "text-white/50 hover:text-white hover:bg-white/5"
-              }`}
-            >
-              <span className="text-xs">{item.icon}</span>
-              {item.label}
-            </Link>
+      {!verified && (
+        <div className="mt-8">
+          <VerifyBanner email={user.email} />
+        </div>
+      )}
+
+      <dl className="mt-8 grid gap-4 sm:grid-cols-3">
+        <div className={cx(cardClass, "p-5")}>
+          <dt className={cx(mutedText, "text-xs font-bold uppercase tracking-widest")}>Email</dt>
+          <dd className="mt-2 break-all text-sm font-bold">{user.email}</dd>
+        </div>
+        <div className={cx(cardClass, "p-5")}>
+          <dt className={cx(mutedText, "text-xs font-bold uppercase tracking-widest")}>Email status</dt>
+          <dd className={cx("mt-2 text-sm font-bold", verified ? "text-[color:var(--af-success)]" : "text-[color:var(--af-info)]")}>
+            {verified ? "Verified" : "Not verified yet"}
+          </dd>
+        </div>
+        <div className={cx(cardClass, "p-5")}>
+          <dt className={cx(mutedText, "text-xs font-bold uppercase tracking-widest")}>Member since</dt>
+          <dd className="mt-2 text-sm font-bold">{formatDate(user.createdAt)}</dd>
+        </div>
+      </dl>
+
+      <section aria-labelledby="getting-started" className={cx(cardClass, "mt-8 p-6")}>
+        <h2 id="getting-started" className="text-lg font-bold">
+          Getting started
+        </h2>
+        <ul className="mt-4 space-y-3">
+          {checklist.map((item) => (
+            <li key={item.label} className="flex items-center gap-3 text-sm">
+              <span
+                aria-hidden="true"
+                className={cx(
+                  "flex h-6 w-6 shrink-0 items-center justify-center rounded-full border",
+                  item.done
+                    ? "border-[color:var(--af-success)] bg-[color:var(--af-success-soft)] text-[color:var(--af-success)]"
+                    : "border-[color:var(--af-border-strong)] text-transparent"
+                )}
+              >
+                <CheckIcon className="h-3.5 w-3.5" />
+              </span>
+              <span className={item.done ? mutedText : "font-medium"}>
+                {item.label}
+                <span className="sr-only">{item.done ? " (done)" : " (to do)"}</span>
+              </span>
+            </li>
           ))}
-        </nav>
+        </ul>
+        <p className={cx(mutedText, "mt-5 text-sm")}>
+          Want to change your name or password? Open{" "}
+          <Link href="/dashboard/settings" className={linkClass}>
+            Settings
+          </Link>
+          .
+        </p>
+      </section>
 
-        {/* User + Logout */}
-        <div className="border-t border-white/10 pt-4 mt-4">
-          <div className="text-xs text-white/40 mb-1 truncate">{user?.email}</div>
-          <button
-            onClick={handleLogout}
-            className="cursor-pointer text-xs text-white/40 hover:text-red-400 transition-colors mt-1"
-          >
-            → logout
-          </button>
-        </div>
-      </div>
-
-      {/* Main content */}
-      <div className="ml-56 p-10">
-        {/* Header */}
-        <div className="mb-10 flex items-start justify-between">
-          <div>
-            <p className="text-white/30 text-xs uppercase tracking-widest mb-1">
-              Welcome back
-            </p>
-            <h1 className="text-3xl font-bold tracking-tight">
-              {user?.name}
-              <span className="text-[#e8ff47]">.</span>
-            </h1>
-          </div>
-          <div className="text-right">
-            <div className="text-xs text-white/30 uppercase tracking-widest">Status</div>
-            <div className="flex items-center gap-2 justify-end mt-1">
-              <span className="w-1.5 h-1.5 rounded-full bg-[#e8ff47] inline-block animate-pulse" />
-              <span className="text-xs text-[#e8ff47]">Active</span>
-            </div>
-          </div>
-        </div>
-
-        {/* Stats row */}
-        <div className="grid grid-cols-3 gap-4 mb-10">
-          {[
-            { label: "Account Status", value: "Verified", sub: "Active session" },
-            { label: "Member Since", value: user?.createdAt ? new Date(user.createdAt).toLocaleDateString("en-US", { month: "short", year: "numeric" }) : "—", sub: "Registration date" },
-            { label: "Auth Method", value: "JWT", sub: "httpOnly cookie" },
-          ].map((stat) => (
-            <div
-              key={stat.label}
-              className="border border-white/10 rounded-lg p-5 hover:border-[#e8ff47]/30 transition-colors"
-            >
-              <div className="text-white/30 text-xs uppercase tracking-widest mb-2">
-                {stat.label}
-              </div>
-              <div className="text-xl font-bold text-white mb-1">{stat.value}</div>
-              <div className="text-xs text-white/30">{stat.sub}</div>
-            </div>
-          ))}
-        </div>
-
-        {/* Info block */}
-        <div className="border border-white/10 rounded-lg p-6 mb-6">
-          <div className="text-xs text-white/30 uppercase tracking-widest mb-4">
-            Account Details
-          </div>
-          <div className="grid grid-cols-2 gap-6">
-            {[
-              { label: "Name", value: user?.name },
-              { label: "Email", value: user?.email },
-              { label: "User ID", value: user?.id },
-              { label: "Token Expiry", value: "1 day" },
-            ].map((row) => (
-              <div key={row.label}>
-                <div className="text-xs text-white/30 mb-1">{row.label}</div>
-                <div className="text-sm text-white font-medium truncate">{row.value}</div>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* Dev note */}
-        <div className="border border-dashed border-[#e8ff47]/20 rounded-lg p-5 bg-[#e8ff47]/5">
-          <div className="text-xs text-[#e8ff47]/60 uppercase tracking-widest mb-1">
-            ◈ Developer Note
-          </div>
-          <p className="text-xs text-white/40 leading-relaxed">
-            This is your scaffolded dashboard. Replace the stats, cards, and content below with your application&apos;s actual data and features. The sidebar, auth logic, and user state are production-ready.
-          </p>
-        </div>
-      </div>
+      <FormAlert tone="info" title="Developer note" className="mt-8">
+        This dashboard is a placeholder. Replace this page by editing <code className="font-mono">app/dashboard/page.tsx</code>. The
+        sidebar and top bar live in <code className="font-mono">components/dashboard/DashboardShell.tsx</code>, and colours in{" "}
+        <code className="font-mono">styles/authforge.css</code>.
+      </FormAlert>
     </div>
   );
 }

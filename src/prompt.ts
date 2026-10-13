@@ -6,7 +6,9 @@ export interface UserChoices {
   database: string;
   emailProvider: EmailProvider;
   requireEmailVerification: boolean;
+  /** Login, signup, password and verification pages, error/not-found and legal pages. */
   includeUI: boolean;
+  includeLanding: boolean;
   includeDashboard: boolean;
 }
 
@@ -20,6 +22,7 @@ export interface ChoiceFlags {
   email?: string;
   verifyEmail?: boolean;
   ui?: boolean;
+  landing?: boolean;
   dashboard?: boolean;
   /** Non-interactive: take defaults instead of prompting. */
   yes?: boolean;
@@ -53,6 +56,7 @@ export async function resolveChoices(
     emailProvider: "console",
     requireEmailVerification: false,
     includeUI: true,
+    includeLanding: true,
     includeDashboard: true,
   };
 
@@ -101,8 +105,16 @@ export async function resolveChoices(
     questions.push({
       type: "confirm",
       name: "includeUI",
-      message: "Include login & signup pages?",
+      message: "Include the sign-in, sign-up and password pages (plus error and legal pages)?",
       default: defaults.includeUI,
+    });
+  }
+  if (flags.landing === undefined) {
+    questions.push({
+      type: "confirm",
+      name: "includeLanding",
+      message: "Include a landing page?",
+      default: defaults.includeLanding,
     });
   }
   if (flags.dashboard === undefined) {
@@ -123,6 +135,7 @@ export async function resolveChoices(
     requireEmailVerification:
       flags.verifyEmail ?? answers.requireEmailVerification ?? defaults.requireEmailVerification,
     includeUI: flags.ui ?? answers.includeUI ?? defaults.includeUI,
+    includeLanding: flags.landing ?? answers.includeLanding ?? defaults.includeLanding,
     includeDashboard: flags.dashboard ?? answers.includeDashboard ?? defaults.includeDashboard,
   };
 }
