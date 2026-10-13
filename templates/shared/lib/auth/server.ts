@@ -17,9 +17,14 @@ export const getCurrentUser = cache(async (): Promise<User | null> => {
   return getUserFromAccessToken(token);
 });
 
-/** Like getCurrentUser, but redirects to the login page when signed out. */
-export async function requireUser(): Promise<User> {
+/**
+ * Like getCurrentUser, but redirects to the login page when signed out.
+ * With `{ verified: true }` it also redirects users whose email isn't
+ * verified yet to the verify-email page.
+ */
+export async function requireUser(options: { verified?: boolean } = {}): Promise<User> {
   const user = await getCurrentUser();
   if (!user) redirect(authConfig.loginPath);
+  if (options.verified && !user.emailVerifiedAt) redirect(authConfig.verifyEmailPath);
   return user;
 }

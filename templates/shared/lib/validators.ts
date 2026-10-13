@@ -40,6 +40,46 @@ export const loginSchema = z.object({
     .max(authConfig.password.maxLength, "Password is too long"),
 });
 
+export const forgotPasswordSchema = z.object({ email });
+
+export const resendVerificationSchema = z.object({ email });
+
+// Raw one-time tokens are 43 base64url characters; cap the length so a huge
+// value can't reach the hash/DB layer.
+const token = z
+  .string({ message: "Token is required" })
+  .min(1, "Token is required")
+  .max(256, "Token is invalid");
+
+export const verifyEmailSchema = z.object({ token });
+
+export const resetPasswordSchema = z
+  .object({
+    token,
+    password,
+    confirmPassword: z.string({ message: "Please confirm your password" }),
+  })
+  .refine((data) => data.password === data.confirmPassword, {
+    path: ["confirmPassword"],
+    message: "Passwords do not match",
+  });
+
+export const changePasswordSchema = z
+  .object({
+    currentPassword: z
+      .string({ message: "Current password is required" })
+      .min(1, "Current password is required")
+      .max(authConfig.password.maxLength, "Password is too long"),
+    newPassword: password,
+    confirmPassword: z.string({ message: "Please confirm your password" }),
+  })
+  .refine((data) => data.newPassword === data.confirmPassword, {
+    path: ["confirmPassword"],
+    message: "Passwords do not match",
+  });
+
+export const profileSchema = z.object({ name });
+
 export type SignupInput = z.infer<typeof signupSchema>;
 export type LoginInput = z.infer<typeof loginSchema>;
 

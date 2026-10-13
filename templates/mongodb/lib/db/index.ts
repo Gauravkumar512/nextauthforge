@@ -2,8 +2,9 @@
 // Another database template only has to provide this same `getDb()`.
 import type { Db } from "./types";
 import { connectMongo } from "./mongo/connection";
-import { RefreshTokenModel, UserModel } from "./mongo/models";
+import { RefreshTokenModel, UserModel, UserTokenModel } from "./mongo/models";
 import { mongoRefreshTokenRepo } from "./mongo/refresh-token-repo";
+import { mongoTokenRepo } from "./mongo/token-repo";
 import { mongoUserRepo } from "./mongo/user-repo";
 
 const globalForDb = globalThis as typeof globalThis & { _authDb?: Promise<Db> };
@@ -11,8 +12,8 @@ const globalForDb = globalThis as typeof globalThis & { _authDb?: Promise<Db> };
 async function init(): Promise<Db> {
   await connectMongo();
   // Make sure the unique and TTL indexes exist before the first write.
-  await Promise.all([UserModel.init(), RefreshTokenModel.init()]);
-  return { users: mongoUserRepo, refreshTokens: mongoRefreshTokenRepo };
+  await Promise.all([UserModel.init(), RefreshTokenModel.init(), UserTokenModel.init()]);
+  return { users: mongoUserRepo, refreshTokens: mongoRefreshTokenRepo, tokens: mongoTokenRepo };
 }
 
 export function getDb(): Promise<Db> {

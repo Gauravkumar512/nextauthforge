@@ -16,6 +16,11 @@ function toUser(doc: UserRow): User {
 }
 
 export const mongoUserRepo: UserRepo = {
+  async findByEmail(email) {
+    const doc = await UserModel.findOne({ email }).lean();
+    return doc ? toUser(doc) : null;
+  },
+
   async findByEmailWithPassword(email): Promise<UserWithPassword | null> {
     const doc = await UserModel.findOne({ email }).lean();
     return doc ? { ...toUser(doc), passwordHash: doc.passwordHash } : null;
@@ -24,6 +29,31 @@ export const mongoUserRepo: UserRepo = {
   async findById(id) {
     if (!isValidObjectId(id)) return null;
     const doc = await UserModel.findById(id).lean();
+    return doc ? toUser(doc) : null;
+  },
+
+  async findByIdWithPassword(id): Promise<UserWithPassword | null> {
+    if (!isValidObjectId(id)) return null;
+    const doc = await UserModel.findById(id).lean();
+    return doc ? { ...toUser(doc), passwordHash: doc.passwordHash } : null;
+  },
+
+  async markEmailVerified(id) {
+    if (!isValidObjectId(id)) return;
+    await UserModel.updateOne(
+      { _id: id, emailVerifiedAt: null },
+      { $set: { emailVerifiedAt: new Date() } }
+    );
+  },
+
+  async updatePasswordHash(id, passwordHash) {
+    if (!isValidObjectId(id)) return;
+    await UserModel.updateOne({ _id: id }, { $set: { passwordHash } });
+  },
+
+  async updateName(id, name) {
+    if (!isValidObjectId(id)) return null;
+    const doc = await UserModel.findByIdAndUpdate(id, { $set: { name } }, { new: true }).lean();
     return doc ? toUser(doc) : null;
   },
 
