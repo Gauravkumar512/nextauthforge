@@ -1,48 +1,45 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
-import { jwtVerify } from "jose";
-import { COOKIE_NAME } from "./lib/auth-config";
-import { getEnv } from "./lib/env";
+import { authConfig } from "./lib/auth-config";
+import { verifyAccessToken } from "./lib/jwt";
 
-const protectedRoutes = ["/dashboard"];
-const authRoutes = ["/login", "/signup"];
+// Edge-safe: only jose (via lib/jwt) is used here. No database, no bcrypt.
+
+const matches = (routes: string[], pathname: string) =>
+  routes.some((route) => pathname === route || pathname.startsWith(`${route}/`));
 
 export async function proxy(request: NextRequest) {
-  const { pathname } = request.nextUrl;
-  const token = request.cookies.get(COOKIE_NAME)?.value;
+  const { pathname, search } = request.nextUrl;
+  const token = request.cookies.get(authConfig.cookies.accessName)?.value;
 
-  const isProtectedRoute = protectedRoutes.some((route) =>
-    pathname.startsWith(route)
-  );
-  const isAuthRoute = authRoutes.some((route) => pathname.startsWith(route));
+  if (matches(authConfig.protectedRoutes, pathname)) {
+    const original = pathname + search;
 
-  if (isProtectedRoute) {
+    // Never signed in (or signed out): go to the login page.
     if (!token) {
-      return NextResponse.redirect(new URL("/login", request.url));
+      const url = new URL(authConfig.loginPath, request.url);
+      url.searchParams.set("next", original);
+      return NextResponse.redirect(url);
     }
 
-    const secret = new TextEncoder().encode(getEnv().AUTH_SECRET);
-    try {
-      await jwtVerify(token, secret);
-      return NextResponse.next();
-    } catch {
-      return NextResponse.redirect(new URL("/login", request.url));
-    }
+    if (await verifyAccessToken(token)) return NextResponse.next();
+
+    // Expired or invalid token: the refresh route (which can see the refresh
+    // cookie) renews the session and sends the user back, or to /login.
+    const url = new URL("/api/auth/refresh", request.url);
+    url.searchParams.set("next", original);
+    return NextResponse.redirect(url);
   }
 
-  if (isAuthRoute && token) {
-    const secret = new TextEncoder().encode(getEnv().AUTH_SECRET);
-    try {
-      await jwtVerify(token, secret);
-      return NextResponse.redirect(new URL("/dashboard", request.url));
-    } catch {
-      return NextResponse.next();
-    }
+  if (matches(authConfig.authRoutes, pathname) && token && (await verifyAccessToken(token))) {
+    return NextResponse.redirect(new URL(authConfig.afterLoginPath, request.url));
   }
 
   return NextResponse.next();
 }
 
 export const config = {
-  matcher: ["/dashboard/:path*", "/login", "/signup"],
+  // Static (the matcher can't reference imports); the route lists above are
+  // applied inside the function. Skips API routes, Next internals and files.
+  matcher: ["/((?!api/|_next/|favicon.ico|.*\\..*).*)"],
 };
