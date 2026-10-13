@@ -94,6 +94,7 @@ export function printSummary({ project, results, manual, install, dryRun }: Summ
     `  ${chalk.dim("POST")} ${chalk.cyan("/api/auth/signup")}`,
     `  ${chalk.dim("POST")} ${chalk.cyan("/api/auth/login")}`,
     `  ${chalk.dim("POST")} ${chalk.cyan("/api/auth/logout")}`,
+    `  ${chalk.dim("POST")} ${chalk.cyan("/api/auth/refresh")}`,
     `  ${chalk.dim("GET")}  ${chalk.cyan("/api/auth/me")}`,
     ""
   );
