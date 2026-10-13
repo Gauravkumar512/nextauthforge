@@ -82,6 +82,35 @@ function detectPackageManager(root: string): PackageManager {
   return "npm";
 }
 
+/**
+ * Tailwind v3 only generates classes for files matched by `content` in its
+ * config. Returns a warning when the generated app/ or components/ folders look
+ * uncovered (v4 detects sources automatically, so nothing to check there).
+ */
+function tailwindContentWarning(root: string, baseDir: string, deps: Record<string, string>): string | undefined {
+  const range = deps.tailwindcss;
+  if (!range || parseInt(range.replace(/^\D*/, ""), 10) !== 3) return undefined;
+
+  const configFile = TAILWIND_CONFIGS.find((f) => fs.pathExistsSync(path.join(root, f)));
+  if (!configFile) return undefined;
+
+  const text = fs.readFileSync(path.join(root, configFile), "utf8");
+  const array = /content\s*:\s*\[([\s\S]*?)\]/.exec(text);
+  if (!array) return undefined; // can't tell (dynamic config); don't guess
+
+  const globs = [...array[1].matchAll(/["'`]([^"'`]+)["'`]/g)].map((m) => m[1].replace(/^\.\//, ""));
+  const prefix = baseDir ? `${baseDir}/` : "";
+  const covers = (dir: string) =>
+    globs.some((g) => g.startsWith(`${prefix}${dir}/`) || g.startsWith(`${prefix}**/`) || g.startsWith("**/"));
+
+  const missing = ["app", "components"].filter((dir) => !covers(dir));
+  if (missing.length === 0) return undefined;
+  return (
+    `Tailwind v3: ${configFile} "content" doesn't cover ${missing.map((d) => `${prefix}${d}/`).join(" and ")}, ` +
+    `so the generated UI may be unstyled. Add e.g. "./${prefix}${missing[0]}/**/*.{js,ts,jsx,tsx,mdx}" to content.`
+  );
+}
+
 function supportsAfter(version: string): boolean {
   const [major, minor] = version.split(".").map((n) => parseInt(n, 10));
   return major > 15 || (major === 15 && minor >= 1);
@@ -124,6 +153,9 @@ export function detectProject(root: string): ProjectInfo {
   const tailwind =
     "tailwindcss" in deps ||
     TAILWIND_CONFIGS.some((f) => fs.pathExistsSync(path.join(root, f)));
+
+  const tailwindWarning = tailwindContentWarning(root, layout === "src" ? "src" : "", deps);
+  if (tailwindWarning) warnings.push(tailwindWarning);
 
   const cacheComponents = NEXT_CONFIGS.some((f) => {
     const file = path.join(root, f);

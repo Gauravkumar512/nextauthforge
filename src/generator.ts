@@ -3,6 +3,7 @@ import fs from "fs-extra";
 import { UserChoices } from "./prompt";
 import { ProjectInfo } from "./detect";
 import { FileContext, FileResult, writeManaged } from "./fileops";
+import { isStockNextPage } from "./stock";
 
 interface TemplateFile {
   /** Absolute path of the template file. */
@@ -22,8 +23,49 @@ export function destPath(baseDir: string, templatePath: string): string {
   return path.posix.join(baseDir, templatePath);
 }
 
-const isUiFile = (rel: string) => rel.startsWith("app/(auth)/") || rel === "app/page.tsx";
-const isDashboardFile = (rel: string) => rel.startsWith("app/dashboard/");
+/**
+ * Which option a template belongs to:
+ *  - ui:        auth pages, error/not-found and the placeholder legal pages
+ *  - landing:   the landing page and its copy (lib/site-config.ts)
+ *  - dashboard: the protected dashboard and settings
+ *  - kit:       the shared components + design tokens, needed by all three
+ *  - core:      API, session and email plumbing (always generated)
+ */
+type Group = "ui" | "landing" | "dashboard" | "kit" | "core";
+
+function groupOf(rel: string): Group {
+  if (
+    rel.startsWith("app/(auth)/") ||
+    rel === "app/not-found.tsx" ||
+    rel === "app/error.tsx" ||
+    rel.startsWith("app/terms/") ||
+    rel.startsWith("app/privacy/")
+  ) {
+    return "ui";
+  }
+  if (rel === "app/page.tsx" || rel === "lib/site-config.ts" || rel.startsWith("components/landing/")) {
+    return "landing";
+  }
+  if (rel.startsWith("app/dashboard/") || rel.startsWith("components/dashboard/")) return "dashboard";
+  if (rel.startsWith("components/auth/") || rel.startsWith("styles/")) return "kit";
+  return "core";
+}
+
+function isSelected(group: Group, choices: UserChoices): boolean {
+  switch (group) {
+    case "ui":
+      return choices.includeUI;
+    case "landing":
+      return choices.includeLanding;
+    case "dashboard":
+      return choices.includeDashboard;
+    case "kit":
+      // Pulled in automatically by whichever of the three needs it.
+      return choices.includeUI || choices.includeLanding || choices.includeDashboard;
+    default:
+      return true;
+  }
+}
 // Handled by env-files.ts, not copied like a normal template.
 const isEnvExample = (rel: string) => rel === ".env.example";
 
@@ -84,6 +126,11 @@ function nextAfterTemplateDir(): string {
   return path.join(TEMPLATES_ROOT, "next-after");
 }
 
+/** Variants that read cookies under <Suspense>, which `cacheComponents` requires. */
+function cacheComponentsTemplateDir(): string {
+  return path.join(TEMPLATES_ROOT, "cache-components");
+}
+
 /** Template dirs whose `.env.example` files document the generated env vars. */
 export function envExampleDirs(choices: UserChoices): string[] {
   return [sharedTemplateDir(), emailTemplateDir(choices.emailProvider)];
@@ -127,6 +174,7 @@ export async function planFiles(
 
   const dirs = [sharedTemplateDir(), dbDir, emailDir];
   if (project.supportsAfter) dirs.push(nextAfterTemplateDir());
+  if (project.cacheComponents) dirs.push(cacheComponentsTemplateDir());
 
   const sources = new Map<string, string>();
   for (const dir of dirs) {
@@ -136,8 +184,7 @@ export async function planFiles(
   return [...sources.keys()]
     .sort()
     .filter((rel) => !isEnvExample(rel))
-    .filter((rel) => (isUiFile(rel) ? choices.includeUI : true))
-    .filter((rel) => (isDashboardFile(rel) ? choices.includeDashboard : true))
+    .filter((rel) => isSelected(groupOf(rel), choices))
     .map((rel): TemplateFile => {
       const srcPath = sources.get(rel)!;
       if (rel === "proxy.ts") return { ...proxyFile(project.nextMajor), srcPath, relPath: rel };
@@ -183,7 +230,14 @@ export async function generateFiles(
 
     let content = await fs.readFile(file.srcPath, "utf8");
     if (file.transform) content = file.transform(content);
-    results.push(await writeManaged(ctx, rel, content));
+
+    // The untouched create-next-app home page is replaced automatically (with a
+    // .bak backup); any other existing page follows the normal conflict rules.
+    const autoReplace =
+      file.relPath === "app/page.tsx"
+        ? { when: isStockNextPage, note: "replaced the stock create-next-app page" }
+        : undefined;
+    results.push(await writeManaged(ctx, rel, content, autoReplace));
   }
 
   return results;

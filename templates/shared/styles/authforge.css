@@ -1,0 +1,106 @@
+/*
+ * nextauthforge design tokens.
+ *
+ * Everything the generated UI looks like comes from the variables below.
+ * Change the accent colour or the corner radius with a one-line edit.
+ * The tokens are scoped to the `.af` class, so they never clash with your own
+ * globals.css. Every generated page is wrapped in `.af.af-page`.
+ *
+ * Contrast (WCAG): text, muted and danger/success text pass 4.5:1 on the
+ * background and surfaces; the input border passes 3:1. If you change the
+ * colours, re-check them (e.g. with the browser dev tools).
+ */
+
+.af {
+  --af-accent: #e8ff47;
+  --af-accent-hover: #f4ff9e;
+  --af-accent-fg: #0a0a0a; /* text on top of the accent */
+  --af-accent-soft: rgba(232, 255, 71, 0.12);
+  --af-accent-glow: rgba(232, 255, 71, 0.07);
+
+  --af-bg: #0a0a0a;
+  --af-surface: #111113;
+  --af-surface-2: #18181b;
+  --af-border: #2a2a2f; /* decorative card/divider borders */
+  --af-border-strong: #71717a; /* input/button borders (3:1 against the surfaces) */
+  --af-grid: rgba(232, 255, 71, 0.05);
+  --af-nav-bg: rgba(10, 10, 10, 0.85);
+  --af-overlay: rgba(0, 0, 0, 0.65);
+
+  --af-text: #f5f5f4;
+  --af-muted: #a1a1aa;
+  --af-placeholder: #8b8b94;
+
+  --af-danger: #ff8a8a;
+  --af-danger-soft: rgba(255, 138, 138, 0.1);
+  --af-success: #6ee7a8;
+  --af-success-soft: rgba(110, 231, 168, 0.1);
+  --af-info: #8ec5ff;
+  --af-info-soft: rgba(142, 197, 255, 0.1);
+
+  --af-radius: 0.5rem;
+}
+
+/* Page wrapper: background, text colour and the project's own font. */
+.af-page {
+  background-color: var(--af-bg);
+  color: var(--af-text);
+  font-family: inherit;
+  color-scheme: dark;
+  -webkit-font-smoothing: antialiased;
+}
+
+.af a {
+  text-underline-offset: 4px;
+}
+
+/* Visible keyboard focus everywhere inside the UI. */
+.af :focus-visible {
+  outline: 2px solid var(--af-accent);
+  outline-offset: 2px;
+}
+
+/* Subtle grid + glow used behind the hero and the auth card. */
+.af-grid-bg {
+  background-image:
+    linear-gradient(var(--af-grid) 1px, transparent 1px),
+    linear-gradient(90deg, var(--af-grid) 1px, transparent 1px);
+  background-size: 56px 56px;
+}
+
+.af-glow {
+  background: radial-gradient(closest-side, var(--af-accent-glow), transparent);
+}
+
+.af-spin {
+  animation: af-spin 0.8s linear infinite;
+}
+
+@keyframes af-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* <details> as an accessible disclosure: hide the native marker, we draw our own. */
+.af summary {
+  list-style: none;
+}
+.af summary::-webkit-details-marker {
+  display: none;
+}
+.af details[open] .af-chevron {
+  transform: rotate(180deg);
+}
+
+/* Don't animate for people who asked us not to. */
+@media (prefers-reduced-motion: reduce) {
+  .af *,
+  .af *::before,
+  .af *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

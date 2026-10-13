@@ -59,10 +59,21 @@ export function printSummary({ project, choices, results, manual, install, dryRu
   else if (install.kind === "dry-run") out.push(`  would run ${cmds(install.commands)}`);
   else out.push(`  skipped (--no-install); run ${cmds(install.commands)}`);
 
+  const replaced = results.find((r) => r.note?.includes("stock create-next-app page"));
+  if (replaced) {
+    out.push(
+      "",
+      chalk.cyan(
+        `ℹ ${replaced.path} was the untouched create-next-app home page, so it ${dryRun ? "would be" : "was"} replaced by the landing page` +
+          (replaced.backup ? ` (backup: ${replaced.backup})` : "")
+      )
+    );
+  }
+
   if (manual) {
     out.push(
       "",
-      chalk.yellow(`⚠ ${manual.path} was not changed (${manual.reason}). Add this by hand:`),
+      chalk.yellow(`⚠ ${manual.path} was ${dryRun ? "not changed" : "not fully changed"} (${manual.reason}). Add this by hand:`),
       "",
       ...manual.snippet.split("\n").map((l) => `    ${chalk.dim(l)}`)
     );
@@ -95,6 +106,29 @@ export function printSummary({ project, choices, results, manual, install, dryRu
     );
   }
   out.push(`  ${chalk.dim(`${step++}.`)} Start your app: ${chalk.cyan(dev)}`);
+
+  const pages: string[] = [];
+  if (choices.includeLanding) pages.push("/");
+  if (choices.includeUI) pages.push("/login", "/signup", "/forgot-password", "/reset-password", "/verify-email", "/terms", "/privacy");
+  if (choices.includeDashboard) pages.push("/dashboard", "/dashboard/settings");
+  if (pages.length > 0) {
+    out.push("", chalk.white.bold("Pages:"), `  ${pages.map((p) => chalk.cyan(p)).join("  ")}`);
+  }
+  if ((choices.includeLanding || choices.includeDashboard) && !choices.includeUI) {
+    out.push(
+      chalk.yellow("⚠ --no-ui: links to /login, /signup, /terms and /privacy point at pages that were not generated.")
+    );
+  }
+  if (pages.length > 0) {
+    const base = project.baseDir ? `${project.baseDir}/` : "";
+    out.push(
+      "",
+      chalk.white.bold("Branding:"),
+      `  ${chalk.cyan(`${base}styles/authforge.css`)}  colours and corner radius (one variable each)`,
+      ...(choices.includeLanding ? [`  ${chalk.cyan(`${base}lib/site-config.ts`)}  landing page copy`] : []),
+      `  ${chalk.cyan(`${base}lib/auth-config.ts`)}  app name (used in emails and the UI)`
+    );
+  }
 
   if (choices.emailProvider === "console") {
     out.push(

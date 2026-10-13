@@ -62,7 +62,9 @@ async function decide(ctx: FileContext, rel: string): Promise<{ decision: Decisi
 export async function writeManaged(
   ctx: FileContext,
   rel: string,
-  content: string
+  content: string,
+  /** Existing files matching `when` are replaced (with a .bak) without asking. */
+  autoReplace?: { when: (existing: string) => boolean; note: string }
 ): Promise<FileResult> {
   const abs = path.join(ctx.root, rel);
 
@@ -77,6 +79,12 @@ export async function writeManaged(
   const existing = await fs.readFile(abs, "utf8");
   if (normalizeEol(existing) === normalizeEol(content)) {
     return { path: rel, action: "skipped", note: "already up to date" };
+  }
+
+  if (autoReplace?.when(existing)) {
+    const backup = await backupFile(ctx, abs);
+    if (!ctx.dryRun) await fs.writeFile(abs, content);
+    return { path: rel, action: "overwritten", note: autoReplace.note, backup };
   }
 
   const { decision, note } = await decide(ctx, rel);

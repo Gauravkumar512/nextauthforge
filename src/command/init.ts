@@ -23,6 +23,7 @@ export interface InitOptions {
   email?: string;
   verifyEmail?: boolean;
   ui?: boolean;
+  landing?: boolean;
   dashboard?: boolean;
 }
 
@@ -71,6 +72,7 @@ export async function runInit(options: InitOptions): Promise<void> {
         email: options.email,
         verifyEmail: options.verifyEmail,
         ui: options.ui,
+        landing: options.landing,
         dashboard: options.dashboard,
         yes,
       },
@@ -81,10 +83,10 @@ export async function runInit(options: InitOptions): Promise<void> {
     fail(err.message);
   }
 
-  if (!project.tailwind && (choices.includeUI || choices.includeDashboard)) {
+  if (!project.tailwind && (choices.includeUI || choices.includeLanding || choices.includeDashboard)) {
     console.log(
       chalk.yellow(
-        "⚠ Tailwind CSS was not detected. The login, signup and dashboard templates are styled with Tailwind and will look unstyled without it."
+        "⚠ Tailwind CSS was not detected. The generated pages are styled with Tailwind and will look unstyled without it."
       )
     );
     if (!yes) {

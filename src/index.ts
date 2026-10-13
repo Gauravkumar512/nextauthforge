@@ -21,8 +21,10 @@ program
   .option("--email <provider>", "email provider: smtp, resend or console (default console)")
   .option("--verify-email", "require email verification before sign-in")
   .option("--no-verify-email", "don't require email verification")
-  .option("--ui", "include login & signup pages")
-  .option("--no-ui", "skip login & signup pages")
+  .option("--ui", "include the auth pages, error/not-found and legal pages")
+  .option("--no-ui", "skip the auth pages, error/not-found and legal pages")
+  .option("--landing", "include the landing page")
+  .option("--no-landing", "skip the landing page")
   .option("--dashboard", "include the example dashboard")
   .option("--no-dashboard", "skip the example dashboard")
   .action(runInit);

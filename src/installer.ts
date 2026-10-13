@@ -4,7 +4,7 @@ import fs from "fs-extra";
 import { PackageManager } from "./detect";
 import { installCommand } from "./pm";
 
-const SHARED_DEPS = ["jose", "bcryptjs", "react-hot-toast", "axios", "zod"];
+const SHARED_DEPS = ["jose", "bcryptjs", "react-hot-toast", "zod"];
 const DB_DEPS: Record<string, string[]> = {
   mongodb: ["mongoose"],
 };
