@@ -13,12 +13,22 @@ export interface ProjectInfo {
   baseDir: "src" | "";
   typescript: boolean;
   tailwind: boolean;
+  /** next.config enables `cacheComponents`, which forbids `export const dynamic`. */
+  cacheComponents: boolean;
   packageManager: PackageManager;
   warnings: string[];
 }
 
 /** Thrown when the target project can't be scaffolded; the message is user-facing. */
 export class DetectError extends Error {}
+
+const NEXT_CONFIGS = [
+  "next.config.ts",
+  "next.config.mts",
+  "next.config.js",
+  "next.config.mjs",
+  "next.config.cjs",
+];
 
 const TAILWIND_CONFIGS = [
   "tailwind.config.js",
@@ -108,6 +118,11 @@ export function detectProject(root: string): ProjectInfo {
     "tailwindcss" in deps ||
     TAILWIND_CONFIGS.some((f) => fs.pathExistsSync(path.join(root, f)));
 
+  const cacheComponents = NEXT_CONFIGS.some((f) => {
+    const file = path.join(root, f);
+    return fs.pathExistsSync(file) && /\bcacheComponents\s*:\s*true\b/.test(fs.readFileSync(file, "utf8"));
+  });
+
   return {
     root,
     nextVersion: next.version,
@@ -116,6 +131,7 @@ export function detectProject(root: string): ProjectInfo {
     baseDir: layout === "src" ? "src" : "",
     typescript: true,
     tailwind,
+    cacheComponents,
     packageManager: detectPackageManager(root),
     warnings,
   };

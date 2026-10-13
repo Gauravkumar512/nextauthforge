@@ -4,7 +4,7 @@ import ora from "ora";
 import inquirer from "inquirer";
 import fs from "fs-extra";
 import { resolveChoices, UserChoices } from "../prompt";
-import { generateFiles, templateDirFor } from "../generator";
+import { generateFiles, sharedTemplateDir } from "../generator";
 import { installDependencies, missingDependencies } from "../installer";
 import { installCommand } from "../pm";
 import { detectProject, DetectError, ProjectInfo } from "../detect";
@@ -100,13 +100,13 @@ export async function runInit(options: InitOptions): Promise<void> {
     const layout = await patchLayout(ctx, project);
     results.push(layout.result);
     manual = layout.manual;
-    results.push(...(await writeEnvFiles(ctx, templateDirFor(choices.database))));
+    results.push(...(await writeEnvFiles(ctx, sharedTemplateDir())));
   } catch (err: any) {
     if (err?.name === "ExitPromptError") throw err;
     fail(`Failed to scaffold files: ${err.message}`);
   }
 
-  const deps = missingDependencies(project.root);
+  const deps = missingDependencies(project.root, choices.database);
   let install: InstallOutcome;
   if (deps.length === 0) {
     install = { kind: "already" };

@@ -1,5 +1,5 @@
 import mongoose from "mongoose";
-import { getEnv } from "./env";
+import { getDatabaseUrl } from "../../env";
 
 interface MongooseCache {
   conn: typeof mongoose | null;
@@ -16,17 +16,10 @@ const cache: MongooseCache = (globalWithMongoose._mongooseCache ??= {
   promise: null,
 });
 
-export async function connect(): Promise<typeof mongoose> {
+export async function connectMongo(): Promise<typeof mongoose> {
   if (cache.conn) return cache.conn;
 
-  if (!cache.promise) {
-    cache.promise = mongoose
-      .connect(getEnv().DATABASE_URL, { bufferCommands: false })
-      .then((m) => {
-        console.log("DB connected");
-        return m;
-      });
-  }
+  cache.promise ??= mongoose.connect(getDatabaseUrl());
 
   try {
     cache.conn = await cache.promise;
