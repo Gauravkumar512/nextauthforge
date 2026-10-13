@@ -1,171 +1,148 @@
 "use client";
 
-import axios from "axios";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import React, { useState } from "react";
+import { useRef, useState } from "react";
+import type { FormEvent } from "react";
 import toast from "react-hot-toast";
+import { useAuth } from "../../../hooks/useAuth";
+import { api, ApiError, describeError } from "../../../lib/api-client";
 import { safeNext } from "../../../lib/safe-redirect";
-import { errorCode, errorMessage } from "../_components/api";
-
-function nextPath(): string {
-  return safeNext(new URLSearchParams(window.location.search).get("next"));
-}
+import { fieldErrors, loginSchema } from "../../../lib/validators";
+import { AuthShell } from "../../../components/auth/AuthShell";
+import { FormAlert } from "../../../components/auth/FormAlert";
+import { FormField } from "../../../components/auth/FormField";
+import { PasswordInput } from "../../../components/auth/PasswordInput";
+import { ResendButton } from "../../../components/auth/ResendButton";
+import { SubmitButton } from "../../../components/auth/SubmitButton";
+import { linkClass } from "../../../components/auth/ui";
+import { useFocusFirstError } from "../../../components/auth/useFocusFirstError";
+import { useSearchParam } from "../../../components/auth/useUrlParam";
 
 export default function LoginPage() {
   const router = useRouter();
+  const { refresh } = useAuth();
+  const formRef = useRef<HTMLFormElement>(null);
 
-  const [user, setUser] = useState({ email: "", password: "" });
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [errors, setErrors] = useState<Record<string, string>>({});
+  const [formError, setFormError] = useState<string | null>(null);
+  const [unverified, setUnverified] = useState(false);
   const [loading, setLoading] = useState(false);
 
-  const isDisabled = user.email.length === 0 || user.password.length === 0 || loading;
+  useFocusFirstError(errors, formRef);
 
-  const onLogin = async (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
+  // ?verified=1 comes from the email verification page, ?reset=1 from the reset page.
+  const verifiedParam = useSearchParam("verified");
+  const resetParam = useSearchParam("reset");
+  const notice = verifiedParam === "1" ? "verified" : resetParam === "1" ? "reset" : null;
+
+  async function onSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setFormError(null);
+    setUnverified(false);
+
+    const parsed = loginSchema.safeParse({ email, password });
+    if (!parsed.success) {
+      setErrors(fieldErrors(parsed.error));
+      return;
+    }
+    setErrors({});
+
     setLoading(true);
     try {
-      await axios.post("/api/auth/login", user);
+      await api("/api/auth/login", { method: "POST", body: parsed.data });
+      await refresh();
       toast.success("Welcome back!");
-      router.replace(nextPath());
+      const next = safeNext(new URLSearchParams(window.location.search).get("next"));
+      router.replace(next);
+      router.refresh();
     } catch (error) {
-      if (errorCode(error) === "EMAIL_NOT_VERIFIED") {
-        toast.error(errorMessage(error));
-        router.push(`/verify-email?email=${encodeURIComponent(user.email)}`);
-        return;
+      if (error instanceof ApiError && error.code === "EMAIL_NOT_VERIFIED") {
+        setUnverified(true);
+      } else if (error instanceof ApiError && error.fields) {
+        setErrors(error.fields);
+      } else {
+        setFormError(describeError(error));
       }
-      toast.error(errorMessage(error));
-    } finally {
       setLoading(false);
     }
-  };
+  }
 
   return (
-    <div className="min-h-screen bg-[#0a0a0a] text-white font-mono flex flex-col relative overflow-hidden">
-      {/* Grid background */}
-      <div
-        className="absolute inset-0 opacity-[0.04]"
-        style={{
-          backgroundImage: `linear-gradient(#e8ff47 1px, transparent 1px), linear-gradient(90deg, #e8ff47 1px, transparent 1px)`,
-          backgroundSize: "60px 60px",
-        }}
-      />
-
-      {/* Glow */}
-      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-125 h-125 bg-[#e8ff47] opacity-[0.03] rounded-full blur-[120px] pointer-events-none" />
-
-      {/* Navbar */}
-      <nav className="relative z-10 flex items-center justify-between px-10 py-6 border-b border-white/5">
-        <Link href="/" className="text-[#e8ff47] text-lg font-black tracking-tight">
-          AUTH<span className="text-white">FORGE</span>
-        </Link>
-        <span className="text-xs text-white/20">
-          No account?{" "}
-          <Link href="/signup" className="text-[#e8ff47]/60 hover:text-[#e8ff47] transition-colors">
-            Sign up
+    <AuthShell
+      title="Welcome back"
+      subtitle="Sign in to your account."
+      footer={
+        <>
+          Don&apos;t have an account?{" "}
+          <Link href="/signup" className={linkClass}>
+            Create one
           </Link>
-        </span>
-      </nav>
-
-      {/* Form */}
-      <div className="relative z-10 flex-1 flex items-center justify-center px-4">
-        <div className="w-full max-w-sm">
-          {/* Header */}
-          <div className="mb-8">
-            <p className="text-xs text-white/30 uppercase tracking-widest mb-2">
-              Welcome back
-            </p>
-            <h1 className="text-3xl font-black tracking-tight">
-              Sign in<span className="text-[#e8ff47]">.</span>
-            </h1>
+        </>
+      }
+    >
+      {notice === "verified" && (
+        <FormAlert tone="success" title="Email verified" className="mb-5">
+          Thanks! You can sign in now.
+        </FormAlert>
+      )}
+      {notice === "reset" && (
+        <FormAlert tone="success" title="Password updated" className="mb-5">
+          Sign in with your new password.
+        </FormAlert>
+      )}
+      {formError && (
+        <FormAlert tone="error" className="mb-5">
+          {formError}
+        </FormAlert>
+      )}
+      {unverified && (
+        <div className="mb-5">
+          <FormAlert tone="info" title="Please verify your email first">
+            We sent a link to <strong>{email.trim()}</strong>. Open it, then sign in. Didn&apos;t get it? Request a new one below.
+          </FormAlert>
+          <div className="mt-3">
+            <ResendButton email={email.trim().toLowerCase()} />
           </div>
-
-          {/* Card */}
-          <div className="border border-white/10 rounded-lg p-6 bg-white/2">
-            <form onSubmit={onLogin} className="space-y-5">
-              {/* Email */}
-              <div>
-                <label className="block text-xs text-white/40 uppercase tracking-widest mb-2">
-                  Email
-                </label>
-                <input
-                  type="email"
-                  autoComplete="email"
-                  required
-                  value={user.email}
-                  onChange={(e) => setUser({ ...user, email: e.target.value })}
-                  placeholder="you@example.com"
-                  className="w-full bg-white/5 border border-white/10 rounded px-4 py-3 text-sm text-white placeholder-white/20 outline-none focus:border-[#e8ff47]/50 focus:bg-white/[0.07] transition-all"
-                />
-              </div>
-
-              {/* Password */}
-              <div>
-                <label className="block text-xs text-white/40 uppercase tracking-widest mb-2">
-                  Password
-                </label>
-                <input
-                  type="password"
-                  autoComplete="current-password"
-                  required
-                  minLength={6}
-                  value={user.password}
-                  onChange={(e) => setUser({ ...user, password: e.target.value })}
-                  placeholder="••••••••"
-                  className="w-full bg-white/5 border border-white/10 rounded px-4 py-3 text-sm text-white placeholder-white/20 outline-none focus:border-[#e8ff47]/50 focus:bg-white/[0.07] transition-all"
-                />
-              </div>
-
-              <div className="text-right -mt-2">
-                <Link
-                  href="/forgot-password"
-                  className="text-xs text-[#e8ff47]/50 hover:text-[#e8ff47] transition-colors"
-                >
-                  Forgot password?
-                </Link>
-              </div>
-
-              {/* Submit */}
-              <button
-                type="submit"
-                disabled={isDisabled}
-                className={`w-full py-3 rounded font-black text-sm tracking-tight transition-all ${
-                  !isDisabled
-                    ? "bg-[#e8ff47] text-black hover:bg-white cursor-pointer"
-                    : "bg-white/5 text-white/20 cursor-not-allowed border border-white/5"
-                }`}
-              >
-                {loading ? (
-                  <span className="flex items-center justify-center gap-2">
-                    <span className="w-4 h-4 border-2 border-black/30 border-t-black rounded-full animate-spin" />
-                    Signing in...
-                  </span>
-                ) : (
-                  "Sign in →"
-                )}
-              </button>
-            </form>
-          </div>
-
-          {/* Footer link */}
-          <p className="mt-5 text-center text-xs text-white/20">
-            Don&apos;t have an account?{" "}
-            <Link
-              href="/signup"
-              className="text-[#e8ff47]/50 hover:text-[#e8ff47] transition-colors"
-            >
-              Create one
-            </Link>
-          </p>
         </div>
-      </div>
+      )}
 
-      {/* Bottom credit */}
-      <footer className="relative z-10 text-center py-5 border-t border-white/5">
-        <span className="text-xs text-white/10">
-          Scaffolded with{" "}
-          <span className="text-[#e8ff47]/30 font-bold">AuthForge</span>
-        </span>
-      </footer>
-    </div>
+      <form ref={formRef} onSubmit={onSubmit} noValidate className="space-y-5">
+        <FormField
+          id="login-email"
+          label="Email"
+          type="email"
+          name="email"
+          autoComplete="email"
+          inputMode="email"
+          required
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          placeholder="you@example.com"
+          error={errors.email}
+        />
+        <PasswordInput
+          id="login-password"
+          label="Password"
+          name="password"
+          autoComplete="current-password"
+          required
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+          placeholder="Your password"
+          error={errors.password}
+          labelAction={
+            <Link href="/forgot-password" className="text-xs text-[color:var(--af-accent)] underline hover:text-[color:var(--af-accent-hover)]">
+              Forgot password?
+            </Link>
+          }
+        />
+        <SubmitButton loading={loading} loadingText="Signing in...">
+          Sign in
+        </SubmitButton>
+      </form>
+    </AuthShell>
   );
 }

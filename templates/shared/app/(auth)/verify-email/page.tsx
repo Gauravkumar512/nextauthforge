@@ -1,90 +1,77 @@
 "use client";
 
-import axios from "axios";
 import Link from "next/link";
-import React, { useEffect, useRef, useState } from "react";
-import toast from "react-hot-toast";
-import { AuthShell, buttonClass, inputClass, labelClass } from "../_components/AuthShell";
-import { errorMessage } from "../_components/api";
+import { useEffect, useRef, useState } from "react";
+import { api } from "../../../lib/api-client";
+import { AuthShell } from "../../../components/auth/AuthShell";
+import { FormField } from "../../../components/auth/FormField";
+import { CheckIcon, MailIcon } from "../../../components/auth/icons";
+import { ResendButton } from "../../../components/auth/ResendButton";
+import { Spinner } from "../../../components/auth/Spinner";
+import { linkClass, primaryButton } from "../../../components/auth/ui";
+import { createCapturedParam, useCapturedParam } from "../../../components/auth/useUrlParam";
 
-type Status = "checking" | "verified" | "failed" | "waiting";
+// Read once; the token is removed from the address bar, history and Referer headers.
+const tokenParam = createCapturedParam("token", { strip: true });
+const emailParam = createCapturedParam("email");
+
+type Result = "verified" | "failed" | null;
 
 export default function VerifyEmailPage() {
-  const [status, setStatus] = useState<Status>("checking");
-  const [email, setEmail] = useState("");
-  const [sending, setSending] = useState(false);
+  const token = useCapturedParam(tokenParam); // undefined until read, then the token or null
+  const emailFromLink = useCapturedParam(emailParam);
+  const [emailInput, setEmailInput] = useState<string | null>(null);
+  const [result, setResult] = useState<Result>(null);
   // The verification link is single-use: make sure the effect only calls the API once.
   const started = useRef(false);
 
+  const email = emailInput ?? emailFromLink ?? "";
+  const status = token === undefined ? "checking" : token === null ? "waiting" : (result ?? "checking");
+
   useEffect(() => {
-    if (started.current) return;
+    if (!token || started.current) return;
     started.current = true;
 
-    const params = new URLSearchParams(window.location.search);
-    const token = params.get("token");
-    setEmail(params.get("email") ?? "");
+    api("/api/auth/verify-email", { method: "POST", body: { token } })
+      .then(() => setResult("verified"))
+      .catch(() => setResult("failed"));
+  }, [token]);
 
-    if (!token) {
-      setStatus("waiting");
-      return;
-    }
-
-    // Keep the secret token out of the address bar, history and Referer headers.
-    window.history.replaceState(null, "", window.location.pathname);
-
-    axios
-      .post("/api/auth/verify-email", { token })
-      .then(() => setStatus("verified"))
-      .catch(() => setStatus("failed"));
-  }, []);
-
-  const onResend = async (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    setSending(true);
-    try {
-      const { data } = await axios.post("/api/auth/resend-verification", { email });
-      toast.success(data.message ?? "If that account needs verification, a new email is on its way.");
-    } catch (error) {
-      toast.error(errorMessage(error));
-    } finally {
-      setSending(false);
-    }
-  };
-
-  const resendForm = (
-    <form onSubmit={onResend} className="space-y-5">
-      <div>
-        <label className={labelClass}>Email</label>
-        <input
-          type="email"
-          autoComplete="email"
-          required
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          placeholder="you@example.com"
-          className={inputClass}
-        />
-      </div>
-      <button type="submit" disabled={sending || email.length === 0} className={buttonClass(!sending && email.length > 0)}>
-        {sending ? "Sending..." : "Send a new verification email →"}
-      </button>
-    </form>
+  const resend = (
+    <div className="space-y-5">
+      <FormField
+        id="verify-email-address"
+        label="Your email"
+        type="email"
+        autoComplete="email"
+        inputMode="email"
+        value={email}
+        onChange={(e) => setEmailInput(e.target.value)}
+        placeholder="you@example.com"
+      />
+      <ResendButton email={email.trim().toLowerCase()} />
+    </div>
   );
 
   if (status === "checking") {
     return (
       <AuthShell title="Verifying your email">
-        <p className="text-sm text-white/60">One moment...</p>
+        <div role="status" className="flex items-center gap-3 text-[color:var(--af-muted)]">
+          <Spinner className="h-5 w-5" />
+          <span>One moment...</span>
+        </div>
       </AuthShell>
     );
   }
 
   if (status === "verified") {
     return (
-      <AuthShell title="Email verified">
-        <p className="text-sm text-white/60 mb-6">Thanks! Your email address is confirmed.</p>
-        <Link href="/login" className="text-xs text-[#e8ff47]/60 hover:text-[#e8ff47] transition-colors">
-          Continue to sign in →
+      <AuthShell title="Email verified" subtitle="Thanks! Your email address is confirmed.">
+        <div className="mb-5 flex justify-center text-[color:var(--af-success)]">
+          <CheckIcon className="h-10 w-10" />
+        </div>
+        <Link href="/login?verified=1" className={`${primaryButton} w-full`}>
+          Continue to sign in
         </Link>
       </AuthShell>
     );
@@ -92,15 +79,34 @@ export default function VerifyEmailPage() {
 
   if (status === "failed") {
     return (
-      <AuthShell title="Link invalid or expired" subtitle="Verification links work once and expire. Request a new one below.">
-        {resendForm}
+      <AuthShell
+        title="This link doesn't work"
+        subtitle="Verification links expire and can only be used once. Request a new one below."
+        footer={
+          <Link href="/login" className={linkClass}>
+            Back to sign in
+          </Link>
+        }
+      >
+        {resend}
       </AuthShell>
     );
   }
 
   return (
-    <AuthShell title="Check your email" subtitle="We sent you a link to verify your address. Didn't get it? Request another below.">
-      {resendForm}
+    <AuthShell
+      title="Check your email"
+      subtitle="We sent you a link to verify your address. Didn't get it? Request another below."
+      footer={
+        <Link href="/login" className={linkClass}>
+          Back to sign in
+        </Link>
+      }
+    >
+      <div className="mb-5 flex justify-center text-[color:var(--af-accent)]">
+        <MailIcon className="h-10 w-10" />
+      </div>
+      {resend}
     </AuthShell>
   );
 }
