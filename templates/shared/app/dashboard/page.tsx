@@ -6,8 +6,8 @@ import { useRouter } from "next/navigation";
 import axios from "axios";
 
 interface AuthUser {
-  _id: string;
-  username: string;
+  id: string;
+  name: string;
   email: string;
   createdAt: string;
 }
@@ -20,7 +20,12 @@ export default function DashboardPage() {
   useEffect(() => {
     const fetchUser = async() => {
       try {
-        const response = await fetch("/api/auth/me");
+        let response = await fetch("/api/auth/me");
+        if (response.status === 401) {
+          // The access token may just have expired: renew it once and retry.
+          const refreshed = await fetch("/api/auth/refresh", { method: "POST" });
+          if (refreshed.ok) response = await fetch("/api/auth/me");
+        }
         if (!response.ok) {
           router.replace("/login");
           return;
@@ -105,7 +110,7 @@ export default function DashboardPage() {
               Welcome back
             </p>
             <h1 className="text-3xl font-bold tracking-tight">
-              {user?.username}
+              {user?.name}
               <span className="text-[#e8ff47]">.</span>
             </h1>
           </div>
@@ -145,9 +150,9 @@ export default function DashboardPage() {
           </div>
           <div className="grid grid-cols-2 gap-6">
             {[
-              { label: "Username", value: user?.username },
+              { label: "Name", value: user?.name },
               { label: "Email", value: user?.email },
-              { label: "User ID", value: user?._id },
+              { label: "User ID", value: user?.id },
               { label: "Token Expiry", value: "1 day" },
             ].map((row) => (
               <div key={row.label}>

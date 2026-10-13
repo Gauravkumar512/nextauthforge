@@ -4,8 +4,8 @@ import axios from "axios"
 import React, { createContext, useContext,useEffect } from "react"
 
 interface AuthUser {
-    _id: string
-    username: string
+    id: string
+    name: string
     email: string
 }
 

@@ -5,6 +5,20 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import React, { useState } from "react";
 import toast from "react-hot-toast";
+import { safeNext } from "../../../lib/safe-redirect";
+
+function errorMessage(error: unknown): string {
+  if (axios.isAxiosError(error)) {
+    const data = error.response?.data;
+    const firstField = data?.fields ? Object.values(data.fields)[0] : undefined;
+    return (typeof firstField === "string" ? firstField : data?.error) || "Something went wrong";
+  }
+  return "Something went wrong";
+}
+
+function nextPath(): string {
+  return safeNext(new URLSearchParams(window.location.search).get("next"));
+}
 
 export default function LoginPage() {
   const router = useRouter();
@@ -20,10 +34,9 @@ export default function LoginPage() {
     try {
       await axios.post("/api/auth/login", user);
       toast.success("Welcome back!");
-      router.replace("/dashboard");
+      router.replace(nextPath());
     } catch (error) {
-      const message = axios.isAxiosError(error) ? error.response?.data?.error : undefined;
-      toast.error(message || "Something went wrong");
+      toast.error(errorMessage(error));
     } finally {
       setLoading(false);
     }

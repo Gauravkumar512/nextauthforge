@@ -5,12 +5,26 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import React, { useState } from "react";
 import toast from "react-hot-toast";
+import { safeNext } from "../../../lib/safe-redirect";
+
+function errorMessage(error: unknown): string {
+  if (axios.isAxiosError(error)) {
+    const data = error.response?.data;
+    const firstField = data?.fields ? Object.values(data.fields)[0] : undefined;
+    return (typeof firstField === "string" ? firstField : data?.error) || "Something went wrong";
+  }
+  return "Something went wrong";
+}
+
+function nextPath(): string {
+  return safeNext(new URLSearchParams(window.location.search).get("next"));
+}
 
 export default function SignupPage() {
   const router = useRouter();
 
   const [user, setUser] = useState({
-    username: "",
+    name: "",
     email: "",
     password: "",
     confirmPassword: "",
@@ -21,7 +35,7 @@ export default function SignupPage() {
 
   const isDisabled =
     !accepted ||
-    user.username.length === 0 ||
+    user.name.length === 0 ||
     user.email.length === 0 ||
     user.password.length === 0 ||
     user.confirmPassword.length === 0 ||
@@ -31,7 +45,7 @@ export default function SignupPage() {
     e.preventDefault();
 
     if (user.password !== user.confirmPassword) {
-      toast.error("Passwords don&apos;t match");
+      toast.error("Passwords don't match");
       return;
     }
 
@@ -39,10 +53,9 @@ export default function SignupPage() {
     try {
       await axios.post("/api/auth/signup", user);
       toast.success("Account created!");
-      router.push("/dashboard");
+      router.push(nextPath());
     } catch (error) {
-      const message = axios.isAxiosError(error) ? error.response?.data?.error : undefined;
-      toast.error(message || "Something went wrong");
+      toast.error(errorMessage(error));
     } finally {
       setLoading(false);
     }
@@ -91,18 +104,18 @@ export default function SignupPage() {
           {/* Card */}
           <div className="border border-white/10 rounded-lg p-6 bg-white/2">
             <form onSubmit={onSignUp} className="space-y-5">
-              {/* Username */}
+              {/* Name */}
               <div>
                 <label className="block text-xs text-white/40 uppercase tracking-widest mb-2">
-                  Username
+                  Name
                 </label>
                 <input
                   type="text"
-                  autoComplete="username"
+                  autoComplete="name"
                   required
-                  value={user.username}
-                  onChange={(e) => setUser({ ...user, username: e.target.value })}
-                  placeholder="johndoe"
+                  value={user.name}
+                  onChange={(e) => setUser({ ...user, name: e.target.value })}
+                  placeholder="John Doe"
                   className="w-full bg-white/5 border border-white/10 rounded px-4 py-3 text-sm text-white placeholder-white/20 outline-none focus:border-[#e8ff47]/50 focus:bg-white/[0.07] transition-all"
                 />
               </div>
