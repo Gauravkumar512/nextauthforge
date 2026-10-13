@@ -5,12 +5,14 @@ export interface SessionTokens {
   refreshToken: string;
 }
 
-/** Opaque 256-bit refresh token, safe to put in a cookie. */
-export function generateRefreshToken(): string {
+/** Opaque 256-bit random token (refresh tokens, email links). */
+export function generateToken(): string {
   return randomBytes(32).toString("base64url");
 }
 
-/** Refresh tokens are only ever stored as this hash. */
+export const generateRefreshToken = generateToken;
+
+/** Tokens are only ever stored as this hash. */
 export function hashToken(token: string): string {
   return createHash("sha256").update(token).digest("hex");
 }

@@ -27,9 +27,10 @@ export function createMemoryRateLimiter(options: {
   const hits = new Map<string, number[]>();
 
   function prune(now: number) {
-    for (const [key, times] of hits) {
+    // forEach (not for...of): Next 13/14 projects compile with target ES5.
+    hits.forEach((times, key) => {
       if (times.length === 0 || now - times[times.length - 1] >= windowMs) hits.delete(key);
-    }
+    });
   }
 
   return {
@@ -55,17 +56,27 @@ export function createMemoryRateLimiter(options: {
   };
 }
 
-// Kept on globalThis so dev hot reloads don't reset the counters.
+type LimiterName = keyof typeof authConfig.rateLimit;
+
+function createLimiters(): Record<LimiterName, RateLimiter> {
+  return Object.fromEntries(
+    Object.entries(authConfig.rateLimit).map(([name, options]) => [
+      name,
+      createMemoryRateLimiter(options),
+    ])
+  ) as Record<LimiterName, RateLimiter>;
+}
+
+// Kept on globalThis so dev hot reloads don't reset the counters (limiters
+// added to the config later are created next to the existing ones).
 const globalForLimiters = globalThis as typeof globalThis & {
-  _authRateLimiters?: Record<keyof typeof authConfig.rateLimit, RateLimiter>;
+  _authRateLimiters?: Partial<Record<LimiterName, RateLimiter>>;
 };
 
-export const limiters = (globalForLimiters._authRateLimiters ??= {
-  login: createMemoryRateLimiter(authConfig.rateLimit.login),
-  loginIp: createMemoryRateLimiter(authConfig.rateLimit.loginIp),
-  signup: createMemoryRateLimiter(authConfig.rateLimit.signup),
-  refresh: createMemoryRateLimiter(authConfig.rateLimit.refresh),
-});
+export const limiters: Record<LimiterName, RateLimiter> = (globalForLimiters._authRateLimiters = {
+  ...createLimiters(),
+  ...globalForLimiters._authRateLimiters,
+}) as Record<LimiterName, RateLimiter>;
 
 export function tooManyRequests(result: RateLimitResult): Response {
   return new Response(JSON.stringify({ error: "Too many requests, please try again later" }), {

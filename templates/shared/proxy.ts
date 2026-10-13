@@ -12,6 +12,9 @@ export async function proxy(request: NextRequest) {
   const { pathname, search } = request.nextUrl;
   const token = request.cookies.get(authConfig.cookies.accessName)?.value;
 
+  // Reachable by everyone, signed in or not (reset/verify links).
+  if (matches(authConfig.publicRoutes, pathname)) return NextResponse.next();
+
   if (matches(authConfig.protectedRoutes, pathname)) {
     const original = pathname + search;
 

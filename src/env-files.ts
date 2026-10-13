@@ -2,6 +2,7 @@ import path from "path";
 import crypto from "crypto";
 import fs from "fs-extra";
 import { FileContext, FileResult } from "./fileops";
+import { UserChoices } from "./prompt";
 
 const ENV_LOCAL = ".env.local";
 const ENV_EXAMPLE = ".env.example";
@@ -20,24 +21,43 @@ function appendBlock(existing: string, block: string): string {
   return `${existing}${sep}${block}`;
 }
 
-async function ensureEnvLocal(ctx: FileContext): Promise<FileResult> {
+interface EnvEntry {
+  key: string;
+  /** Called only when the key has to be added (so secrets are generated lazily). */
+  value: () => string;
+}
+
+/** The keys .env.local needs for the chosen options (existing keys are never touched). */
+function envLocalEntries(choices: UserChoices): EnvEntry[] {
+  const plain = (key: string, value = ""): EnvEntry => ({ key, value: () => value });
+  return [
+    plain("DATABASE_URL"),
+    { key: "AUTH_SECRET", value: () => crypto.randomBytes(32).toString("hex") },
+    plain("APP_URL", "http://localhost:3000"),
+    plain("EMAIL_PROVIDER", choices.emailProvider),
+    plain("EMAIL_FROM", choices.emailProvider === "console" ? "noreply@localhost" : ""),
+    ...(choices.emailProvider === "smtp"
+      ? [plain("SMTP_HOST"), plain("SMTP_PORT", "587"), plain("SMTP_USER"), plain("SMTP_PASS")]
+      : []),
+    ...(choices.emailProvider === "resend" ? [plain("RESEND_API_KEY")] : []),
+  ];
+}
+
+async function ensureEnvLocal(ctx: FileContext, choices: UserChoices): Promise<FileResult> {
   const abs = path.join(ctx.root, ENV_LOCAL);
   const exists = await fs.pathExists(abs);
   const existing = exists ? await fs.readFile(abs, "utf8") : "";
 
   const lines: string[] = [];
   const added: string[] = [];
-  if (!hasKey(existing, "DATABASE_URL")) {
-    lines.push("DATABASE_URL=");
-    added.push("DATABASE_URL");
-  }
-  if (!hasKey(existing, "AUTH_SECRET")) {
-    lines.push(`AUTH_SECRET=${crypto.randomBytes(32).toString("hex")}`);
-    added.push("AUTH_SECRET");
+  for (const entry of envLocalEntries(choices)) {
+    if (hasKey(existing, entry.key)) continue;
+    lines.push(`${entry.key}=${entry.value()}`);
+    added.push(entry.key);
   }
 
   if (added.length === 0) {
-    return { path: ENV_LOCAL, action: "skipped", note: "already has DATABASE_URL and AUTH_SECRET" };
+    return { path: ENV_LOCAL, action: "skipped", note: "already has all keys" };
   }
 
   const block = lines.join("\n") + "\n";
@@ -49,9 +69,14 @@ async function ensureEnvLocal(ctx: FileContext): Promise<FileResult> {
   };
 }
 
-async function ensureEnvExample(ctx: FileContext, templateDir: string): Promise<FileResult> {
+async function ensureEnvExample(ctx: FileContext, templateDirs: string[]): Promise<FileResult> {
   const abs = path.join(ctx.root, ENV_EXAMPLE);
-  const template = await fs.readFile(path.join(templateDir, ENV_EXAMPLE), "utf8");
+  const parts: string[] = [];
+  for (const dir of templateDirs) {
+    const file = path.join(dir, ENV_EXAMPLE);
+    if (await fs.pathExists(file)) parts.push((await fs.readFile(file, "utf8")).replace(/\r\n/g, "\n").trimEnd());
+  }
+  const template = parts.join("\n\n") + "\n";
 
   if (!(await fs.pathExists(abs))) {
     if (!ctx.dryRun) await fs.writeFile(abs, template);
@@ -94,10 +119,14 @@ async function ensureGitignore(ctx: FileContext): Promise<FileResult> {
   return { path: GITIGNORE, action: exists ? "patched" : "created", note: "ignore .env* except .env.example" };
 }
 
-export async function writeEnvFiles(ctx: FileContext, templateDir: string): Promise<FileResult[]> {
+export async function writeEnvFiles(
+  ctx: FileContext,
+  templateDirs: string[],
+  choices: UserChoices
+): Promise<FileResult[]> {
   return [
-    await ensureEnvLocal(ctx),
-    await ensureEnvExample(ctx, templateDir),
+    await ensureEnvLocal(ctx, choices),
+    await ensureEnvExample(ctx, templateDirs),
     await ensureGitignore(ctx),
   ];
 }

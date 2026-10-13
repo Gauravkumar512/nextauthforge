@@ -39,6 +39,20 @@ export const mongoRefreshTokenRepo: RefreshTokenRepo = {
     return result.modifiedCount === 1;
   },
 
+  async revokeAllForUser(userId) {
+    await RefreshTokenModel.updateMany(
+      { userId, revokedAt: null },
+      { $set: { revokedAt: new Date() } }
+    );
+  },
+
+  async revokeAllForUserExcept(userId, exceptFamilyId) {
+    await RefreshTokenModel.updateMany(
+      { userId, revokedAt: null, familyId: { $ne: exceptFamilyId } },
+      { $set: { revokedAt: new Date() } }
+    );
+  },
+
   async revokeFamily(familyId) {
     await RefreshTokenModel.updateMany(
       { familyId, revokedAt: null },

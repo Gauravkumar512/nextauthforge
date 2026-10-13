@@ -4,9 +4,8 @@ import ora from "ora";
 import inquirer from "inquirer";
 import fs from "fs-extra";
 import { resolveChoices, UserChoices } from "../prompt";
-import { generateFiles, sharedTemplateDir } from "../generator";
-import { installDependencies, missingDependencies } from "../installer";
-import { installCommand } from "../pm";
+import { envExampleDirs, generateFiles } from "../generator";
+import { installCommands, installDependencies, missingDependencies } from "../installer";
 import { detectProject, DetectError, ProjectInfo } from "../detect";
 import { patchLayout, ManualStep } from "../layout-patch";
 import { writeEnvFiles } from "../env-files";
@@ -21,6 +20,8 @@ export interface InitOptions {
   install?: boolean;
   name?: string;
   db?: string;
+  email?: string;
+  verifyEmail?: boolean;
   ui?: boolean;
   dashboard?: boolean;
 }
@@ -64,7 +65,15 @@ export async function runInit(options: InitOptions): Promise<void> {
   let choices: UserChoices;
   try {
     choices = await resolveChoices(
-      { name: options.name, db: options.db, ui: options.ui, dashboard: options.dashboard, yes },
+      {
+        name: options.name,
+        db: options.db,
+        email: options.email,
+        verifyEmail: options.verifyEmail,
+        ui: options.ui,
+        dashboard: options.dashboard,
+        yes,
+      },
       defaultName
     );
   } catch (err: any) {
@@ -100,36 +109,36 @@ export async function runInit(options: InitOptions): Promise<void> {
     const layout = await patchLayout(ctx, project);
     results.push(layout.result);
     manual = layout.manual;
-    results.push(...(await writeEnvFiles(ctx, sharedTemplateDir())));
+    results.push(...(await writeEnvFiles(ctx, envExampleDirs(choices), choices)));
   } catch (err: any) {
     if (err?.name === "ExitPromptError") throw err;
     fail(`Failed to scaffold files: ${err.message}`);
   }
 
-  const deps = missingDependencies(project.root, choices.database);
+  const plan = missingDependencies(project.root, choices);
+  const commands = installCommands(project.packageManager, plan);
   let install: InstallOutcome;
-  if (deps.length === 0) {
+  if (commands.length === 0) {
     install = { kind: "already" };
   } else {
-    const command = installCommand(project.packageManager, deps);
     if (dryRun) {
-      install = { kind: "dry-run", command };
+      install = { kind: "dry-run", commands };
     } else if (options.install === false) {
-      install = { kind: "skipped", command };
+      install = { kind: "skipped", commands };
     } else {
-      const spinner = ora(`Installing dependencies (${command})...`).start();
+      const spinner = ora(`Installing dependencies (${commands.join(" && ")})...`).start();
       try {
-        installDependencies(project.root, project.packageManager, deps);
+        installDependencies(project.root, project.packageManager, plan);
         spinner.succeed(chalk.green("Dependencies installed"));
-        install = { kind: "installed", command };
+        install = { kind: "installed", commands };
       } catch (err: any) {
         spinner.fail(chalk.red("Failed to install dependencies"));
         console.error(err.message);
-        console.error(chalk.dim(`Files were scaffolded. Install manually with: ${command}`));
+        console.error(chalk.dim(`Files were scaffolded. Install manually with: ${commands.join(" && ")}`));
         process.exit(1);
       }
     }
   }
 
-  printSummary({ project, results, manual, install, dryRun });
+  printSummary({ project, choices, results, manual, install, dryRun });
 }

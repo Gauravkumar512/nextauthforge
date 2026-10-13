@@ -74,7 +74,43 @@ export function dbTemplateDir(database: string): string {
   return path.join(TEMPLATES_ROOT, database);
 }
 
-/** Shared templates merged with the chosen database's (the database wins on a clash). */
+/** Only the chosen email adapter (and its env docs). */
+export function emailTemplateDir(provider: string): string {
+  return path.join(TEMPLATES_ROOT, `email-${provider}`);
+}
+
+/** `after()`-based lib/after.ts for Next.js >= 15.1 (shared has the fallback). */
+function nextAfterTemplateDir(): string {
+  return path.join(TEMPLATES_ROOT, "next-after");
+}
+
+/** Template dirs whose `.env.example` files document the generated env vars. */
+export function envExampleDirs(choices: UserChoices): string[] {
+  return [sharedTemplateDir(), emailTemplateDir(choices.emailProvider)];
+}
+
+/**
+ * Writes the init choices into lib/auth-config.ts (same idea as the
+ * proxy/middleware name substitution).
+ */
+function configureAuth(choices: UserChoices): (content: string) => string {
+  return (content) =>
+    content
+      .replace(
+        /appName: ".*", \/\/ nextauthforge:appName/,
+        () => `appName: ${JSON.stringify(choices.projectName.trim())}, // nextauthforge:appName`
+      )
+      .replace(
+        /requireEmailVerification: (?:true|false), \/\/ nextauthforge:requireEmailVerification/,
+        () =>
+          `requireEmailVerification: ${choices.requireEmailVerification}, // nextauthforge:requireEmailVerification`
+      );
+}
+
+/**
+ * Shared templates merged with the chosen database, email adapter and (on Next
+ * >= 15.1) the `after()` helper. Later directories win on a clash.
+ */
 export async function planFiles(
   project: ProjectInfo,
   choices: UserChoices
@@ -84,8 +120,16 @@ export async function planFiles(
     throw new Error(`No templates for database "${choices.database}".`);
   }
 
+  const emailDir = emailTemplateDir(choices.emailProvider);
+  if (!(await fs.pathExists(emailDir))) {
+    throw new Error(`No templates for email provider "${choices.emailProvider}".`);
+  }
+
+  const dirs = [sharedTemplateDir(), dbDir, emailDir];
+  if (project.supportsAfter) dirs.push(nextAfterTemplateDir());
+
   const sources = new Map<string, string>();
-  for (const dir of [sharedTemplateDir(), dbDir]) {
+  for (const dir of dirs) {
     for (const rel of await listFiles(dir)) sources.set(rel, path.join(dir, rel));
   }
 
@@ -97,6 +141,9 @@ export async function planFiles(
     .map((rel): TemplateFile => {
       const srcPath = sources.get(rel)!;
       if (rel === "proxy.ts") return { ...proxyFile(project.nextMajor), srcPath, relPath: rel };
+      if (rel === "lib/auth-config.ts") {
+        return { srcPath, relPath: rel, transform: configureAuth(choices) };
+      }
       if (project.cacheComponents && rel.startsWith("app/api/")) {
         return { srcPath, relPath: rel, transform: stripDynamicExport };
       }

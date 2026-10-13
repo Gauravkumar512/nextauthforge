@@ -1,18 +1,24 @@
 import inquirer from "inquirer";
 
 export interface UserChoices {
-  // Collected but not used yet; will be used for branding in Step 5.
+  // The brand shown in emails (and, from Step 5, in the UI).
   projectName: string;
   database: string;
+  emailProvider: EmailProvider;
+  requireEmailVerification: boolean;
   includeUI: boolean;
   includeDashboard: boolean;
 }
 
 export const DATABASES = ["mongodb"] as const;
+export const EMAIL_PROVIDERS = ["console", "smtp", "resend"] as const;
+export type EmailProvider = (typeof EMAIL_PROVIDERS)[number];
 
 export interface ChoiceFlags {
   name?: string;
   db?: string;
+  email?: string;
+  verifyEmail?: boolean;
   ui?: boolean;
   dashboard?: boolean;
   /** Non-interactive: take defaults instead of prompting. */
@@ -32,6 +38,11 @@ export async function resolveChoices(
       `Unsupported --db "${flags.db}". Supported: ${DATABASES.join(", ")}.`
     );
   }
+  if (flags.email !== undefined && !(EMAIL_PROVIDERS as readonly string[]).includes(flags.email)) {
+    throw new Error(
+      `Unsupported --email "${flags.email}". Supported: ${EMAIL_PROVIDERS.join(", ")}.`
+    );
+  }
   if (flags.name !== undefined && flags.name.trim() === "") {
     throw new Error("--name cannot be empty.");
   }
@@ -39,6 +50,8 @@ export async function resolveChoices(
   const defaults: UserChoices = {
     projectName: defaultName,
     database: "mongodb",
+    emailProvider: "console",
+    requireEmailVerification: false,
     includeUI: true,
     includeDashboard: true,
   };
@@ -63,6 +76,27 @@ export async function resolveChoices(
       default: defaults.database,
     });
   }
+  if (flags.email === undefined) {
+    questions.push({
+      type: "list",
+      name: "emailProvider",
+      message: "How should emails be sent?",
+      choices: [
+        { name: "Console (development only: prints emails to the server log)", value: "console" },
+        { name: "SMTP (nodemailer)", value: "smtp" },
+        { name: "Resend", value: "resend" },
+      ],
+      default: defaults.emailProvider,
+    });
+  }
+  if (flags.verifyEmail === undefined) {
+    questions.push({
+      type: "confirm",
+      name: "requireEmailVerification",
+      message: "Require users to verify their email before they can sign in?",
+      default: defaults.requireEmailVerification,
+    });
+  }
   if (flags.ui === undefined) {
     questions.push({
       type: "confirm",
@@ -85,6 +119,9 @@ export async function resolveChoices(
   return {
     projectName: flags.name ?? answers.projectName ?? defaults.projectName,
     database: flags.db ?? answers.database ?? defaults.database,
+    emailProvider: (flags.email ?? answers.emailProvider ?? defaults.emailProvider) as EmailProvider,
+    requireEmailVerification:
+      flags.verifyEmail ?? answers.requireEmailVerification ?? defaults.requireEmailVerification,
     includeUI: flags.ui ?? answers.includeUI ?? defaults.includeUI,
     includeDashboard: flags.dashboard ?? answers.includeDashboard ?? defaults.includeDashboard,
   };

@@ -1,17 +1,19 @@
 import chalk from "chalk";
 import { ProjectInfo } from "./detect";
+import { UserChoices } from "./prompt";
 import { FileAction, FileResult } from "./fileops";
 import { ManualStep } from "./layout-patch";
 import { runScriptCommand } from "./pm";
 
 export type InstallOutcome =
-  | { kind: "installed"; command: string }
+  | { kind: "installed"; commands: string[] }
   | { kind: "already" }
-  | { kind: "skipped"; command: string }
-  | { kind: "dry-run"; command: string };
+  | { kind: "skipped"; commands: string[] }
+  | { kind: "dry-run"; commands: string[] };
 
 export interface SummaryInput {
   project: ProjectInfo;
+  choices: UserChoices;
   results: FileResult[];
   manual?: ManualStep;
   install: InstallOutcome;
@@ -27,7 +29,7 @@ const LABELS: Record<FileAction, { done: string; planned: string; color: (s: str
 
 const ORDER: FileAction[] = ["created", "patched", "overwritten", "skipped"];
 
-export function printSummary({ project, results, manual, install, dryRun }: SummaryInput): void {
+export function printSummary({ project, choices, results, manual, install, dryRun }: SummaryInput): void {
   const out: string[] = [""];
 
   out.push(
@@ -51,10 +53,11 @@ export function printSummary({ project, results, manual, install, dryRun }: Summ
   out.push(chalk.dim(`  ${counts.join(" · ")}`));
 
   out.push("", chalk.white.bold("Dependencies:"));
-  if (install.kind === "installed") out.push(`  installed with ${chalk.cyan(install.command)}`);
+  const cmds = (list: string[]) => list.map((c) => chalk.cyan(c)).join(" and ");
+  if (install.kind === "installed") out.push(`  installed with ${cmds(install.commands)}`);
   else if (install.kind === "already") out.push("  all template dependencies are already installed");
-  else if (install.kind === "dry-run") out.push(`  would run ${chalk.cyan(install.command)}`);
-  else out.push(`  skipped (--no-install); run ${chalk.cyan(install.command)}`);
+  else if (install.kind === "dry-run") out.push(`  would run ${cmds(install.commands)}`);
+  else out.push(`  skipped (--no-install); run ${cmds(install.commands)}`);
 
   if (manual) {
     out.push(
@@ -68,16 +71,22 @@ export function printSummary({ project, results, manual, install, dryRun }: Summ
   const envLocal = results.find((r) => r.path === ".env.local");
   const generatedSecret = envLocal?.note?.includes("AUTH_SECRET");
   const dev = runScriptCommand(project.packageManager, "dev");
+
+  // Exactly the values that are still empty after init, for the chosen provider.
+  const toFill = ["DATABASE_URL"];
+  if (choices.emailProvider === "smtp") toFill.push("EMAIL_FROM", "SMTP_HOST", "SMTP_USER", "SMTP_PASS");
+  if (choices.emailProvider === "resend") toFill.push("EMAIL_FROM", "RESEND_API_KEY");
+
   let step = 1;
   out.push("", chalk.white.bold("Next steps:"));
   out.push(
-    `  ${chalk.dim(`${step++}.`)} Set ${chalk.cyan("DATABASE_URL")} in ${chalk.cyan(".env.local")} to your MongoDB connection string`
+    `  ${chalk.dim(`${step++}.`)} Fill in ${toFill.map((k) => chalk.cyan(k)).join(", ")} in ${chalk.cyan(".env.local")}`
   );
   out.push(
     chalk.dim(
       generatedSecret
-        ? "     (AUTH_SECRET was generated for you; keep it secret)"
-        : "     (and make sure AUTH_SECRET is set, 32+ characters)"
+        ? "     (AUTH_SECRET was generated for you; keep it secret. In production set APP_URL to your real URL.)"
+        : "     (make sure AUTH_SECRET is set, 32+ characters. In production set APP_URL to your real URL.)"
     )
   );
   if (manual) {
@@ -87,6 +96,24 @@ export function printSummary({ project, results, manual, install, dryRun }: Summ
   }
   out.push(`  ${chalk.dim(`${step++}.`)} Start your app: ${chalk.cyan(dev)}`);
 
+  if (choices.emailProvider === "console") {
+    out.push(
+      "",
+      chalk.yellow(
+        "⚠ Email provider is \"console\": emails (and their links) are only printed to the server log in development."
+      ),
+      chalk.yellow(
+        `  It refuses to send in production. Re-run with ${chalk.cyan("--email smtp")} or ${chalk.cyan("--email resend")} before you deploy.`
+      )
+    );
+  }
+  if (choices.requireEmailVerification) {
+    out.push(
+      "",
+      chalk.dim("Email verification is required: new users must click the emailed link before they can sign in.")
+    );
+  }
+
   out.push(
     "",
     chalk.dim("────────────────────────────────────────────────────"),
@@ -95,6 +122,9 @@ export function printSummary({ project, results, manual, install, dryRun }: Summ
     `  ${chalk.dim("POST")} ${chalk.cyan("/api/auth/login")}`,
     `  ${chalk.dim("POST")} ${chalk.cyan("/api/auth/logout")}`,
     `  ${chalk.dim("POST")} ${chalk.cyan("/api/auth/refresh")}`,
+    `  ${chalk.dim("POST")} ${chalk.cyan("/api/auth/forgot-password")}  ${chalk.dim("reset-password, verify-email, resend-verification")}`,
+    `  ${chalk.dim("POST")} ${chalk.cyan("/api/auth/change-password")}  ${chalk.dim("logout-all")}`,
+    `  ${chalk.dim("PATCH")} ${chalk.cyan("/api/auth/profile")}`,
     `  ${chalk.dim("GET")}  ${chalk.cyan("/api/auth/me")}`,
     ""
   );

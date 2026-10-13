@@ -52,8 +52,32 @@ const refreshTokenSchema = new Schema<RefreshTokenDoc>(
   { timestamps: { createdAt: true, updatedAt: false } }
 );
 
+export interface UserTokenDoc {
+  userId: string;
+  type: "email_verify" | "password_reset";
+  tokenHash: string;
+  expiresAt: Date;
+  usedAt: Date | null;
+  createdAt: Date;
+}
+
+const userTokenSchema = new Schema<UserTokenDoc>(
+  {
+    userId: { type: String, required: true, index: true },
+    type: { type: String, enum: ["email_verify", "password_reset"], required: true },
+    tokenHash: { type: String, required: true, unique: true }, // sha256 of the token
+    // TTL index: MongoDB deletes the document once expiresAt has passed.
+    expiresAt: { type: Date, required: true, index: { expireAfterSeconds: 0 } },
+    usedAt: { type: Date, default: null },
+  },
+  { timestamps: { createdAt: true, updatedAt: false } }
+);
+
 export const UserModel: Model<UserDoc> =
   mongoose.models.User || mongoose.model<UserDoc>("User", userSchema);
+
+export const UserTokenModel: Model<UserTokenDoc> =
+  mongoose.models.UserToken || mongoose.model<UserTokenDoc>("UserToken", userTokenSchema);
 
 export const RefreshTokenModel: Model<RefreshTokenDoc> =
   mongoose.models.RefreshToken ||

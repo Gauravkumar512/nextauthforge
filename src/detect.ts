@@ -13,6 +13,8 @@ export interface ProjectInfo {
   baseDir: "src" | "";
   typescript: boolean;
   tailwind: boolean;
+  /** Next.js >= 15.1 has a stable `after()`. */
+  supportsAfter: boolean;
   /** next.config enables `cacheComponents`, which forbids `export const dynamic`. */
   cacheComponents: boolean;
   packageManager: PackageManager;
@@ -80,6 +82,11 @@ function detectPackageManager(root: string): PackageManager {
   return "npm";
 }
 
+function supportsAfter(version: string): boolean {
+  const [major, minor] = version.split(".").map((n) => parseInt(n, 10));
+  return major > 15 || (major === 15 && minor >= 1);
+}
+
 export function detectProject(root: string): ProjectInfo {
   const pkgPath = path.join(root, "package.json");
   if (!fs.pathExistsSync(pkgPath)) {
@@ -132,6 +139,7 @@ export function detectProject(root: string): ProjectInfo {
     typescript: true,
     tailwind,
     cacheComponents,
+    supportsAfter: supportsAfter(next.version),
     packageManager: detectPackageManager(root),
     warnings,
   };

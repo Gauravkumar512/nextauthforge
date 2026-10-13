@@ -6,15 +6,7 @@ import { useRouter } from "next/navigation";
 import React, { useState } from "react";
 import toast from "react-hot-toast";
 import { safeNext } from "../../../lib/safe-redirect";
-
-function errorMessage(error: unknown): string {
-  if (axios.isAxiosError(error)) {
-    const data = error.response?.data;
-    const firstField = data?.fields ? Object.values(data.fields)[0] : undefined;
-    return (typeof firstField === "string" ? firstField : data?.error) || "Something went wrong";
-  }
-  return "Something went wrong";
-}
+import { errorMessage } from "../_components/api";
 
 function nextPath(): string {
   return safeNext(new URLSearchParams(window.location.search).get("next"));
@@ -51,7 +43,13 @@ export default function SignupPage() {
 
     setLoading(true);
     try {
-      await axios.post("/api/auth/signup", user);
+      const { data } = await axios.post("/api/auth/signup", user);
+      if (data.requiresVerification) {
+        // No session yet: the user has to click the link in the email first.
+        toast.success("Account created! Check your email to verify it.");
+        router.push(`/verify-email?email=${encodeURIComponent(user.email)}`);
+        return;
+      }
       toast.success("Account created!");
       router.push(nextPath());
     } catch (error) {
