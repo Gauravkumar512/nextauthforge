@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { authConfig } from "../../../../lib/auth-config";
+import { toPublicUser } from "../../../../lib/auth/public-user";
 import { getUserFromAccessToken } from "../../../../lib/auth/service";
 import { jsonError, logError, serverError } from "../../../../lib/http";
 
@@ -18,7 +19,7 @@ export async function GET(request: NextRequest) {
     if (!user) return jsonError("Not authenticated", 401);
 
     return NextResponse.json(
-      { success: true, user },
+      { success: true, user: toPublicUser(user) },
       { status: 200, headers: { "Cache-Control": "no-store" } }
     );
   } catch (error) {

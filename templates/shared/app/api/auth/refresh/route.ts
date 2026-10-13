@@ -24,6 +24,9 @@ export async function POST(request: NextRequest) {
     const result = await rotateSession(refreshToken, meta);
     if (!result.ok) {
       const response = jsonError("Not authenticated", 401);
+      // Lost a race with a concurrent refresh: the winner already set new
+      // cookies, so leave the browser's cookies alone.
+      if (result.reason === "raced") return response;
       clearSessionCookies(response);
       return response;
     }
@@ -60,7 +63,12 @@ export async function GET(request: NextRequest) {
     if (!refreshToken) return toLogin();
 
     const result = await rotateSession(refreshToken, meta);
-    if (!result.ok) return toLogin();
+    if (!result.ok) {
+      // Lost a race with a concurrent refresh (see refreshReuseGraceSeconds):
+      // keep the cookies the winner set and just continue to the page.
+      if (result.reason === "raced") return NextResponse.redirect(new URL(next, request.url));
+      return toLogin();
+    }
 
     const response = NextResponse.redirect(new URL(next, request.url));
     setSessionCookies(response, result.tokens);

@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { toPublicUser } from "../../../../lib/auth/public-user";
 import { loginUser } from "../../../../lib/auth/service";
 import { setSessionCookies } from "../../../../lib/auth/cookies";
 import { isSameOrigin } from "../../../../lib/csrf";
@@ -27,13 +28,20 @@ export async function POST(request: NextRequest) {
 
     const result = await loginUser(parsed.data, meta);
     if (!result.ok) {
+      // Only reachable with the correct password, so it does not help guessing.
+      if (result.reason === "unverified") {
+        return NextResponse.json(
+          { error: "Please verify your email before signing in", code: "EMAIL_NOT_VERIFIED" },
+          { status: 403 }
+        );
+      }
       // Identical for "no such email" and "wrong password".
       return jsonError("Invalid email or password", 401);
     }
 
     await limiters.login.reset(key);
 
-    const response = NextResponse.json({ success: true, user: result.user }, { status: 200 });
+    const response = NextResponse.json({ success: true, user: toPublicUser(result.user) }, { status: 200 });
     setSessionCookies(response, result.tokens);
     return response;
   } catch (error) {
