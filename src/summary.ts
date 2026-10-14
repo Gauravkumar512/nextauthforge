@@ -133,6 +133,13 @@ export function printSummary({ project, choices, results, manual, install, gener
   if (choices.database === "postgresql") {
     out.push(`  ${chalk.dim(`${step++}.`)} Create the tables: ${chalk.cyan("npx prisma migrate dev --name init")}`);
   }
+  if (choices.database === "postgresql") {
+    out.push(
+      chalk.dim(
+        '     (The Prisma client is generated code and is git-ignored: make sure "prisma generate" runs when you deploy, e.g. a "postinstall" script.)'
+      )
+    );
+  }
   out.push(`  ${chalk.dim(`${step++}.`)} Start your app: ${chalk.cyan(dev)}`);
 
   const pages: string[] = [];

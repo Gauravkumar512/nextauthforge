@@ -89,6 +89,16 @@ export async function runInit(options: InitOptions): Promise<void> {
     fail(err.message);
   }
 
+  // mongoose 9 and Prisma 7 (the pinned database packages) need Node 20.19+.
+  const [nodeMajor, nodeMinor] = process.versions.node.split(".").map(Number);
+  if (nodeMajor < 20 || (nodeMajor === 20 && nodeMinor < 19)) {
+    console.log(
+      chalk.yellow(
+        `⚠ You are running Node ${process.versions.node}. The ${choices.database === "postgresql" ? "Prisma 7" : "mongoose 9"} package this template installs needs Node 20.19 or newer, so the generated app won't run on this Node version.`
+      )
+    );
+  }
+
   if (!project.tailwind && (choices.includeUI || choices.includeLanding || choices.includeDashboard)) {
     console.log(
       chalk.yellow(
