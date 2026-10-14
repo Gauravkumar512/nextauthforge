@@ -1,49 +1,79 @@
 {
   "name": "nextauthforge",
-  "version": "1.0.3",
-  "description": "Plug-and-play authentication scaffolding tool for Next.js App Router",
-  "main": "dist/index.js",
+  "version": "2.0.0",
+  "description": "Scaffold production-ready authentication (JWT + rotating refresh tokens, email verification, password reset, UI) into a Next.js App Router project",
   "bin": {
     "nextauthforge": "bin/index.js"
   },
   "files": [
-    "bin",
     "dist",
-    "templates"
+    "bin",
+    "templates",
+    "README.md",
+    "LICENSE",
+    "CHANGELOG.md",
+    "!templates/tsconfig.json"
   ],
   "scripts": {
-    "build": "tsc",
+    "build": "tsup",
     "dev": "tsx src/index.ts",
-    "start": "node bin/index.js"
+    "start": "node bin/index.js",
+    "typecheck": "tsc --noEmit",
+    "prepublishOnly": "npm run build"
   },
   "keywords": [
     "nextjs",
+    "next",
     "auth",
     "authentication",
     "scaffold",
+    "generator",
+    "cli",
     "jwt",
+    "refresh-token",
     "mongodb",
-    "cli"
+    "mongoose",
+    "postgresql",
+    "prisma",
+    "app-router",
+    "tailwind"
   ],
-  "author": "",
-  "license": "ISC",
+  "author": "Gaurav Kumar <gauravskumar03@gmail.com> (https://github.com/Gauravkumar512)",
+  "license": "MIT",
   "type": "commonjs",
-  "dependencies": {
-    "bcryptjs": "^3.0.3",
-    "chalk": "^5.6.2",
-    "commander": "^14.0.3",
-    "fs-extra": "^11.3.3",
-    "inquirer": "^13.3.0",
-    "jose": "^6.1.3",
-    "mongoose": "^9.2.2",
-    "ora": "^9.3.0",
-    "react-hot-toast": "^2.6.0"
+  "engines": {
+    "node": ">=18.18"
   },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Gauravkumar512/nextauthforge.git"
+  },
+  "bugs": {
+    "url": "https://github.com/Gauravkumar512/nextauthforge/issues"
+  },
+  "homepage": "https://github.com/Gauravkumar512/nextauthforge#readme",
   "devDependencies": {
-    "@types/bcryptjs": "^2.4.6",
     "@types/fs-extra": "^11.0.4",
     "@types/node": "^25.3.0",
+    "@types/nodemailer": "^8.0.2",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "bcryptjs": "^3.0.3",
+    "chalk": "^5.6.2",
+    "commander": "^12.1.0",
+    "fs-extra": "^11.4.1",
+    "inquirer": "^12.11.1",
+    "jose": "^6.2.12",
+    "mongoose": "^9.11.2",
+    "next": "^16.4.0",
+    "nodemailer": "^10.1.0",
+    "ora": "^8.2.0",
+    "react": "^19.3.0",
+    "react-dom": "^19.3.0",
+    "react-hot-toast": "^2.6.1",
+    "tsup": "^8.5.1",
     "tsx": "^4.21.0",
-    "typescript": "^5.9.3"
+    "typescript": "^5.9.3",
+    "zod": "^4.6.7"
   }
 }

@@ -1,0 +1,20 @@
+{
+  "compilerOptions": {
+    "target": "ES2017",
+    "lib": ["dom", "dom.iterable", "esnext"],
+    "allowJs": true,
+    "skipLibCheck": true,
+    "strict": true,
+    "noEmit": true,
+    "esModuleInterop": true,
+    "module": "esnext",
+    "moduleResolution": "bundler",
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "jsx": "preserve",
+    // The generator merges these folders into one project, so relative imports
+    // (e.g. ../db from shared/ into mongodb/) resolve across them.
+    "rootDirs": ["shared", "mongodb", "email-console", "email-smtp", "email-resend", "next-after", "cache-components"]
+  },
+  "include": ["shared", "mongodb", "email-console", "email-smtp", "email-resend", "next-after", "cache-components"]
+}

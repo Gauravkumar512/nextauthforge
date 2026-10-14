@@ -1,0 +1,60 @@
+// Prisma schema for the nextauthforge auth tables.
+// After editing: npx prisma migrate dev --name <change>
+// The connection URL is configured in prisma.config.ts (reads DATABASE_URL).
+
+generator client {
+  provider = "prisma-client"
+  // The generated client lives next to the repositories that use it.
+  output   = "../lib/db/generated/prisma" // nextauthforge:output
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum UserTokenType {
+  email_verify
+  password_reset
+}
+
+model User {
+  id              String         @id @default(cuid())
+  name            String
+  email           String         @unique
+  passwordHash    String
+  emailVerifiedAt DateTime?
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+  refreshTokens   RefreshToken[]
+  tokens          UserToken[]
+}
+
+model RefreshToken {
+  id                String    @id @default(cuid())
+  userId            String
+  user              User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tokenHash         String    @unique // sha256 of the token
+  familyId          String
+  expiresAt         DateTime
+  revokedAt         DateTime?
+  replacedByTokenId String?
+  userAgent         String?
+  ip                String?
+  createdAt         DateTime  @default(now())
+
+  @@index([userId])
+  @@index([familyId])
+}
+
+model UserToken {
+  id        String        @id @default(cuid())
+  userId    String
+  user      User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type      UserTokenType
+  tokenHash String        @unique // sha256 of the token
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime      @default(now())
+
+  @@index([userId, type])
+}
