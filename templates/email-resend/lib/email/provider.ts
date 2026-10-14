@@ -1,3 +1,6 @@
+// Resend adapter (plain fetch, no SDK). Configure it with RESEND_API_KEY and
+// EMAIL_FROM in .env.local. To use another provider, re-run `init` with --email
+// and --force, or replace sendWithProvider() below.
 import type { EmailEnv } from "../env";
 import { assertProvider, type EmailMessage } from "./types";
 

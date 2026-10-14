@@ -1,34 +1,57 @@
 {
   "name": "nextauthforge",
-  "version": "2.0.0-alpha.0",
-  "description": "Plug-and-play authentication scaffolding tool for Next.js App Router",
-  "main": "dist/index.js",
+  "version": "2.0.0",
+  "description": "Scaffold production-ready authentication (JWT + rotating refresh tokens, email verification, password reset, UI) into a Next.js App Router project",
   "bin": {
     "nextauthforge": "bin/index.js"
   },
   "files": [
-    "bin",
     "dist",
-    "templates"
+    "bin",
+    "templates",
+    "README.md",
+    "LICENSE",
+    "CHANGELOG.md",
+    "!templates/tsconfig.json"
   ],
   "scripts": {
     "build": "tsup",
     "dev": "tsx src/index.ts",
     "start": "node bin/index.js",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "prepublishOnly": "npm run build"
   },
   "keywords": [
     "nextjs",
+    "next",
     "auth",
     "authentication",
     "scaffold",
+    "generator",
+    "cli",
     "jwt",
+    "refresh-token",
     "mongodb",
-    "cli"
+    "mongoose",
+    "postgresql",
+    "prisma",
+    "app-router",
+    "tailwind"
   ],
   "author": "Gaurav Kumar <gauravskumar03@gmail.com> (https://github.com/Gauravkumar512)",
   "license": "MIT",
   "type": "commonjs",
+  "engines": {
+    "node": ">=18.18"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Gauravkumar512/nextauthforge.git"
+  },
+  "bugs": {
+    "url": "https://github.com/Gauravkumar512/nextauthforge/issues"
+  },
+  "homepage": "https://github.com/Gauravkumar512/nextauthforge#readme",
   "devDependencies": {
     "@types/fs-extra": "^11.0.4",
     "@types/node": "^25.3.0",
@@ -52,16 +75,5 @@
     "tsx": "^4.21.0",
     "typescript": "^5.9.3",
     "zod": "^4.6.7"
-  },
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/Gauravkumar512/nextauthforge.git"
-  },
-  "bugs": {
-    "url": "https://github.com/Gauravkumar512/nextauthforge/issues"
-  },
-  "homepage": "https://github.com/Gauravkumar512/nextauthforge#readme",
-  "engines": {
-    "node": ">=18.18"
   }
 }

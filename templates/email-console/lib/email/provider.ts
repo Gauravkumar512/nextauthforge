@@ -1,3 +1,6 @@
+// Development-only adapter: prints emails (and their links) to the server log
+// instead of sending them, and refuses to run in production. Before you deploy,
+// re-run `init` with --email smtp (or resend) and --force.
 import type { EmailEnv } from "../env";
 import { assertProvider, type EmailMessage } from "./types";
 

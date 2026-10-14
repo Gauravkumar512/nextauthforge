@@ -1,3 +1,6 @@
+// SMTP adapter (nodemailer). Configure it with the SMTP_* and EMAIL_FROM vars in
+// .env.local. To use another provider, re-run `init` with --email and --force, or
+// replace sendWithProvider() below; the rest of the app only calls it.
 import nodemailer, { type Transporter } from "nodemailer";
 import type { EmailEnv } from "../env";
 import { assertProvider, type EmailMessage } from "./types";
