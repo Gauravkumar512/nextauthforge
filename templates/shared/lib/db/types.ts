@@ -1,5 +1,5 @@
 // The contract between the auth service and the database. Each database
-// template (templates/mongodb, later Prisma/Postgres) implements these
+// template (templates/mongodb and templates/postgresql) implements these
 // interfaces and exposes them through lib/db/index.ts.
 
 /** A user as exposed to the rest of the app. Never includes the password hash. */
@@ -72,8 +72,6 @@ export interface RefreshTokenRepo {
   revokeFamily(familyId: string): Promise<void>;
   /** Revokes every active refresh token of the user (all devices). */
   revokeAllForUser(userId: string): Promise<void>;
-  /** Same, but keeps the token family `exceptFamilyId` (e.g. the current device). */
-  revokeAllForUserExcept(userId: string, exceptFamilyId: string): Promise<void>;
 }
 
 /** One-time tokens sent by email. */

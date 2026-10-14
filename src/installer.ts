@@ -4,15 +4,43 @@ import fs from "fs-extra";
 import { PackageManager } from "./detect";
 import { installCommand } from "./pm";
 
+/**
+ * The ONE place template dependency versions are pinned. Each range is the
+ * major the templates were tested against, so a future major release can't
+ * silently break a fresh scaffold.
+ */
+const VERSIONS: Record<string, string> = {
+  jose: "^6",
+  bcryptjs: "^3",
+  "react-hot-toast": "^2",
+  zod: "^4",
+  mongoose: "^9",
+  nodemailer: "^10",
+  "@types/nodemailer": "^8",
+  "@prisma/client": "^7",
+  "@prisma/adapter-pg": "^7",
+  prisma: "^7",
+  dotenv: "^18",
+};
+
 const SHARED_DEPS = ["jose", "bcryptjs", "react-hot-toast", "zod"];
-const DB_DEPS: Record<string, string[]> = {
-  mongodb: ["mongoose"],
+const DB_DEPS: Record<string, { deps: string[]; devDeps: string[] }> = {
+  mongodb: { deps: ["mongoose"], devDeps: [] },
+  // prisma (CLI) and dotenv are only used by `prisma migrate` / prisma.config.ts.
+  postgresql: { deps: ["@prisma/client", "@prisma/adapter-pg"], devDeps: ["prisma", "dotenv"] },
 };
 const EMAIL_DEPS: Record<string, { deps: string[]; devDeps: string[] }> = {
   smtp: { deps: ["nodemailer"], devDeps: ["@types/nodemailer"] },
   resend: { deps: [], devDeps: [] },
   console: { deps: [], devDeps: [] },
 };
+
+/** "jose" -> "jose@^6" */
+function pinned(name: string): string {
+  const range = VERSIONS[name];
+  if (!range) throw new Error(`No pinned version for template dependency "${name}".`);
+  return `${name}@${range}`;
+}
 
 export interface DependencyPlan {
   deps: string[];
@@ -26,11 +54,14 @@ export function missingDependencies(
 ): DependencyPlan {
   const pkg = fs.readJsonSync(path.join(root, "package.json"));
   const present = { ...pkg.dependencies, ...pkg.devDependencies };
-  const email = EMAIL_DEPS[choices.emailProvider] ?? { deps: [], devDeps: [] };
-  const missing = (list: string[]) => list.filter((dep) => !(dep in present));
+  const none = { deps: [], devDeps: [] };
+  const email = EMAIL_DEPS[choices.emailProvider] ?? none;
+  const db = DB_DEPS[choices.database] ?? none;
+  const missing = (list: string[]) =>
+    list.filter((dep) => !(dep in present)).map(pinned);
   return {
-    deps: missing([...SHARED_DEPS, ...(DB_DEPS[choices.database] ?? []), ...email.deps]),
-    devDeps: missing(email.devDeps),
+    deps: missing([...SHARED_DEPS, ...db.deps, ...email.deps]),
+    devDeps: missing([...db.devDeps, ...email.devDeps]),
   };
 }
 
@@ -46,4 +77,13 @@ export function installDependencies(root: string, pm: PackageManager, plan: Depe
   for (const command of installCommands(pm, plan)) {
     execSync(command, { cwd: root, stdio: "inherit" });
   }
+}
+
+/** Commands that must run after the install (not needed for MongoDB). */
+export function postInstallCommands(choices: { database: string }): string[] {
+  return choices.database === "postgresql" ? ["npx prisma generate"] : [];
+}
+
+export function runPostInstall(root: string, commands: string[]): void {
+  for (const command of commands) execSync(command, { cwd: root, stdio: "inherit" });
 }

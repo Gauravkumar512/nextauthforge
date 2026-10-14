@@ -11,12 +11,18 @@ export type InstallOutcome =
   | { kind: "skipped"; commands: string[] }
   | { kind: "dry-run"; commands: string[] };
 
+export type PostInstall =
+  | { kind: "none" }
+  | { kind: "done"; commands: string[] }
+  | { kind: "pending"; commands: string[] };
+
 export interface SummaryInput {
   project: ProjectInfo;
   choices: UserChoices;
   results: FileResult[];
   manual?: ManualStep;
   install: InstallOutcome;
+  generated: PostInstall;
   dryRun: boolean;
 }
 
@@ -29,7 +35,7 @@ const LABELS: Record<FileAction, { done: string; planned: string; color: (s: str
 
 const ORDER: FileAction[] = ["created", "patched", "overwritten", "skipped"];
 
-export function printSummary({ project, choices, results, manual, install, dryRun }: SummaryInput): void {
+export function printSummary({ project, choices, results, manual, install, generated, dryRun }: SummaryInput): void {
   const out: string[] = [""];
 
   out.push(
@@ -59,6 +65,11 @@ export function printSummary({ project, choices, results, manual, install, dryRu
   else if (install.kind === "dry-run") out.push(`  would run ${cmds(install.commands)}`);
   else out.push(`  skipped (--no-install); run ${cmds(install.commands)}`);
 
+  if (generated.kind === "done") out.push(`  ran ${chalk.cyan(generated.commands.join(" && "))}`);
+  else if (generated.kind === "pending") {
+    out.push(`  ${dryRun ? "would run" : "skipped (--no-install); run"} ${chalk.cyan(generated.commands.join(" && "))}`);
+  }
+
   const replaced = results.find((r) => r.note?.includes("stock create-next-app page"));
   if (replaced) {
     out.push(
@@ -79,6 +90,17 @@ export function printSummary({ project, choices, results, manual, install, dryRu
     );
   }
 
+  const schema = results.find((r) => r.path === "prisma/schema.prisma");
+  if (schema?.action === "skipped" && !schema.note?.includes("up to date")) {
+    out.push(
+      "",
+      chalk.yellow("⚠ prisma/schema.prisma already exists and was kept. Add the User, RefreshToken and UserToken models"),
+      chalk.yellow(
+        `  from the template by hand (or re-run with --force), with the generator output set to ${project.baseDir ? "../src/" : "../"}lib/db/generated/prisma.`
+      )
+    );
+  }
+
   const envLocal = results.find((r) => r.path === ".env.local");
   const generatedSecret = envLocal?.note?.includes("AUTH_SECRET");
   const dev = runScriptCommand(project.packageManager, "dev");
@@ -93,6 +115,9 @@ export function printSummary({ project, choices, results, manual, install, dryRu
   out.push(
     `  ${chalk.dim(`${step++}.`)} Fill in ${toFill.map((k) => chalk.cyan(k)).join(", ")} in ${chalk.cyan(".env.local")}`
   );
+  if (choices.database === "postgresql") {
+    out.push(chalk.dim("     DATABASE_URL example: postgresql://user:password@localhost:5432/mydb"));
+  }
   out.push(
     chalk.dim(
       generatedSecret
@@ -104,6 +129,9 @@ export function printSummary({ project, choices, results, manual, install, dryRu
     out.push(
       `  ${chalk.dim(`${step++}.`)} Mount ${chalk.cyan("<ToasterProvider />")} in ${chalk.cyan(manual.path)} (snippet above)`
     );
+  }
+  if (choices.database === "postgresql") {
+    out.push(`  ${chalk.dim(`${step++}.`)} Create the tables: ${chalk.cyan("npx prisma migrate dev --name init")}`);
   }
   out.push(`  ${chalk.dim(`${step++}.`)} Start your app: ${chalk.cyan(dev)}`);
 

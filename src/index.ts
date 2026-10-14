@@ -17,7 +17,7 @@ program
   .option("--dry-run", "print what would happen without changing anything")
   .option("--no-install", "don't install dependencies")
   .option("--name <name>", "project name")
-  .option("--db <database>", "database to use (mongodb)")
+  .option("--db <database>", "database to use: mongodb or postgresql (default mongodb)")
   .option("--email <provider>", "email provider: smtp, resend or console (default console)")
   .option("--verify-email", "require email verification before sign-in")
   .option("--no-verify-email", "don't require email verification")

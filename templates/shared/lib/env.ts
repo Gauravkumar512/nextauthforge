@@ -6,10 +6,16 @@ const authSchema = z.object({
     .min(32, "AUTH_SECRET must be at least 32 characters"),
 });
 
+// Set by `init` for the database you chose.
+const DATABASE_URL_SCHEMES = ["mongodb://", "mongodb+srv://"]; // nextauthforge:dbSchemes
+
 const databaseSchema = z.object({
   DATABASE_URL: z
     .string({ message: "DATABASE_URL is required" })
-    .min(1, "DATABASE_URL is required"),
+    .min(1, "DATABASE_URL is required")
+    .refine((url) => DATABASE_URL_SCHEMES.some((scheme) => url.startsWith(scheme)), {
+      message: `DATABASE_URL must start with ${DATABASE_URL_SCHEMES.join(" or ")}`,
+    }),
 });
 
 const appSchema = z.object({

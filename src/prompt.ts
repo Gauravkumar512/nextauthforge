@@ -1,7 +1,7 @@
 import inquirer from "inquirer";
 
 export interface UserChoices {
-  // The brand shown in emails (and, from Step 5, in the UI).
+  // The brand shown in emails (and in the UI).
   projectName: string;
   database: string;
   emailProvider: EmailProvider;
@@ -12,7 +12,7 @@ export interface UserChoices {
   includeDashboard: boolean;
 }
 
-export const DATABASES = ["mongodb"] as const;
+export const DATABASES = ["mongodb", "postgresql"] as const;
 export const EMAIL_PROVIDERS = ["console", "smtp", "resend"] as const;
 export type EmailProvider = (typeof EMAIL_PROVIDERS)[number];
 
@@ -76,7 +76,10 @@ export async function resolveChoices(
       type: "list",
       name: "database",
       message: "Which database are you using?",
-      choices: [{ name: "MongoDB", value: "mongodb" }],
+      choices: [
+        { name: "MongoDB", value: "mongodb" },
+        { name: "PostgreSQL (Prisma)", value: "postgresql" },
+      ],
       default: defaults.database,
     });
   }

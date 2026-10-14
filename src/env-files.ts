@@ -130,3 +130,17 @@ export async function writeEnvFiles(
     await ensureGitignore(ctx),
   ];
 }
+
+/** The generated Prisma client is build output: keep it out of git. */
+export async function ensureGeneratedIgnored(ctx: FileContext, baseDir: string): Promise<FileResult> {
+  const rule = `${baseDir ? `/${baseDir}` : ""}/lib/db/generated/`;
+  const abs = path.join(ctx.root, GITIGNORE);
+  const exists = await fs.pathExists(abs);
+  const existing = exists ? await fs.readFile(abs, "utf8") : "";
+  if (existing.split(/\r?\n/).some((line) => line.trim() === rule)) {
+    return { path: GITIGNORE, action: "skipped", note: "already ignores the generated Prisma client" };
+  }
+  const block = `# generated Prisma client (nextauthforge)\n${rule}\n`;
+  if (!ctx.dryRun) await fs.writeFile(abs, appendBlock(existing, existing === "" ? block : `\n${block}`));
+  return { path: GITIGNORE, action: exists ? "patched" : "created", note: "ignore the generated Prisma client" };
+}

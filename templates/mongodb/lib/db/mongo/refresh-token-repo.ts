@@ -46,13 +46,6 @@ export const mongoRefreshTokenRepo: RefreshTokenRepo = {
     );
   },
 
-  async revokeAllForUserExcept(userId, exceptFamilyId) {
-    await RefreshTokenModel.updateMany(
-      { userId, revokedAt: null, familyId: { $ne: exceptFamilyId } },
-      { $set: { revokedAt: new Date() } }
-    );
-  },
-
   async revokeFamily(familyId) {
     await RefreshTokenModel.updateMany(
       { familyId, revokedAt: null },

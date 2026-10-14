@@ -20,7 +20,12 @@ interface TemplateFile {
  * layout's base dir ("src" or "").
  */
 export function destPath(baseDir: string, templatePath: string): string {
-  return path.posix.join(baseDir, templatePath);
+  return isRootFile(templatePath) ? templatePath : path.posix.join(baseDir, templatePath);
+}
+
+/** Prisma's files always live at the project root, never under src/. */
+function isRootFile(templatePath: string): boolean {
+  return templatePath === "prisma.config.ts" || templatePath.startsWith("prisma/");
 }
 
 /**
@@ -133,7 +138,7 @@ function cacheComponentsTemplateDir(): string {
 
 /** Template dirs whose `.env.example` files document the generated env vars. */
 export function envExampleDirs(choices: UserChoices): string[] {
-  return [sharedTemplateDir(), emailTemplateDir(choices.emailProvider)];
+  return [dbTemplateDir(choices.database), sharedTemplateDir(), emailTemplateDir(choices.emailProvider)];
 }
 
 /**
@@ -152,6 +157,34 @@ function configureAuth(choices: UserChoices): (content: string) => string {
         () =>
           `requireEmailVerification: ${choices.requireEmailVerification}, // nextauthforge:requireEmailVerification`
       );
+}
+
+/** URL schemes lib/env.ts accepts for DATABASE_URL, per database. */
+const DATABASE_URL_SCHEMES: Record<string, string[]> = {
+  mongodb: ["mongodb://", "mongodb+srv://"],
+  postgresql: ["postgresql://", "postgres://"],
+};
+
+function configureEnv(database: string): (content: string) => string {
+  const schemes = DATABASE_URL_SCHEMES[database] ?? [];
+  return (content) =>
+    content.replace(
+      /const DATABASE_URL_SCHEMES = \[.*\]; \/\/ nextauthforge:dbSchemes/,
+      () => `const DATABASE_URL_SCHEMES = ${JSON.stringify(schemes)}; // nextauthforge:dbSchemes`
+    );
+}
+
+/**
+ * Where the generated Prisma client goes, relative to prisma/schema.prisma:
+ * next to the repositories, so under src/ for the src layout.
+ */
+function configurePrismaSchema(baseDir: string): (content: string) => string {
+  const output = baseDir ? `../${baseDir}/lib/db/generated/prisma` : "../lib/db/generated/prisma";
+  return (content) =>
+    content.replace(
+      /output   = ".*" \/\/ nextauthforge:output/,
+      () => `output   = "${output}" // nextauthforge:output`
+    );
 }
 
 /**
@@ -188,6 +221,12 @@ export async function planFiles(
     .map((rel): TemplateFile => {
       const srcPath = sources.get(rel)!;
       if (rel === "proxy.ts") return { ...proxyFile(project.nextMajor), srcPath, relPath: rel };
+      if (rel === "lib/env.ts") {
+        return { srcPath, relPath: rel, transform: configureEnv(choices.database) };
+      }
+      if (rel === "prisma/schema.prisma") {
+        return { srcPath, relPath: rel, transform: configurePrismaSchema(project.baseDir) };
+      }
       if (rel === "lib/auth-config.ts") {
         return { srcPath, relPath: rel, transform: configureAuth(choices) };
       }

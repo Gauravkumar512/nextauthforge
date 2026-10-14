@@ -5,12 +5,18 @@ import inquirer from "inquirer";
 import fs from "fs-extra";
 import { resolveChoices, UserChoices } from "../prompt";
 import { envExampleDirs, generateFiles } from "../generator";
-import { installCommands, installDependencies, missingDependencies } from "../installer";
+import {
+  installCommands,
+  installDependencies,
+  missingDependencies,
+  postInstallCommands,
+  runPostInstall,
+} from "../installer";
 import { detectProject, DetectError, ProjectInfo } from "../detect";
 import { patchLayout, ManualStep } from "../layout-patch";
-import { writeEnvFiles } from "../env-files";
+import { writeEnvFiles, ensureGeneratedIgnored } from "../env-files";
 import { FileContext, FileResult } from "../fileops";
-import { InstallOutcome, printSummary } from "../summary";
+import { InstallOutcome, PostInstall, printSummary } from "../summary";
 
 export interface InitOptions {
   yes?: boolean;
@@ -112,6 +118,9 @@ export async function runInit(options: InitOptions): Promise<void> {
     results.push(layout.result);
     manual = layout.manual;
     results.push(...(await writeEnvFiles(ctx, envExampleDirs(choices), choices)));
+    if (choices.database === "postgresql") {
+      results.push(await ensureGeneratedIgnored(ctx, project.baseDir));
+    }
   } catch (err: any) {
     if (err?.name === "ExitPromptError") throw err;
     fail(`Failed to scaffold files: ${err.message}`);
@@ -142,5 +151,22 @@ export async function runInit(options: InitOptions): Promise<void> {
     }
   }
 
-  printSummary({ project, choices, results, manual, install, dryRun });
+  // `prisma generate` needs no database; it just builds the typed client.
+  const generate = postInstallCommands(choices);
+  let generated: PostInstall = generate.length === 0 ? { kind: "none" } : { kind: "pending", commands: generate };
+  if (generate.length > 0 && !dryRun && options.install !== false) {
+    const spinner = ora(`Running ${generate.join(" && ")}...`).start();
+    try {
+      runPostInstall(project.root, generate);
+      spinner.succeed(chalk.green("Prisma client generated"));
+      generated = { kind: "done", commands: generate };
+    } catch (err: any) {
+      spinner.fail(chalk.red("Failed to generate the Prisma client"));
+      console.error(err.message);
+      console.error(chalk.dim(`Run it manually: ${generate.join(" && ")}`));
+      process.exit(1);
+    }
+  }
+
+  printSummary({ project, choices, results, manual, install, generated, dryRun });
 }
